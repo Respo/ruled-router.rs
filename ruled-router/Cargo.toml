@@ -1,0 +1,21 @@
+[package]
+name = "ruled-router"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT OR Apache-2.0"
+description = "A high-performance router library with derive macro support for Rust"
+repository = "https://github.com/yourusername/ruled-router"
+keywords = ["router", "web", "http", "derive", "macro"]
+categories = ["web-programming", "network-programming"]
+readme = "../README.md"
+
+[dependencies]
+ruled-router-derive = { path = "../ruled-router-derive", optional = true }
+
+[features]
+default = ["derive"]
+derive = ["ruled-router-derive"]
+
+[dev-dependencies]
+trybuild = { workspace = true }

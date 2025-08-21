@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "ruled-router",
+    "ruled-router-derive"
+]
+resolver = "2"
+
+[workspace.dependencies]
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["full"] }
+trybuild = "1.0"
