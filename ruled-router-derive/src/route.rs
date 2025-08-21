@@ -2,53 +2,9 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DeriveInput, Type};
+use syn::{DeriveInput, Type, Data, Fields};
 
-use crate::{extract_route_pattern, extract_struct_fields};
-
-/// Expand the Router derive macro
-pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
-  let struct_name = &input.ident;
-  let pattern = extract_route_pattern(&input)?;
-  let fields = extract_struct_fields(&input.data)?;
-
-  // 分析路径模式，提取参数名
-  let param_names = extract_path_params(&pattern);
-
-  // 生成解析逻辑
-  let parse_fields = generate_parse_fields(&fields, &param_names)?;
-
-  // 生成格式化逻辑
-  let format_fields = generate_format_fields(&fields);
-
-  let expanded = quote! {
-      impl ::ruled_router::traits::Router for #struct_name {
-          fn parse(path: &str) -> Result<Self, ::ruled_router::error::ParseError> {
-              let (path_part, _) = ::ruled_router::utils::split_path_query(path);
-              let parser = ::ruled_router::parser::PathParser::new(#pattern)?;
-              let params = parser.match_path(path_part)?;
-
-              Ok(Self {
-                  #(#parse_fields),*
-              })
-          }
-
-          fn format(&self) -> String {
-              let mut params = ::std::collections::HashMap::new();
-              #(#format_fields)*
-
-              let formatter = ::ruled_router::formatter::PathFormatter::new(#pattern).unwrap();
-              formatter.format(&params).unwrap()
-          }
-
-          fn pattern() -> &'static str {
-              #pattern
-          }
-      }
-  };
-
-  Ok(expanded)
-}
+use crate::{extract_route_config, extract_route_pattern, extract_struct_fields};
 
 /// 从路径模式中提取参数名
 fn extract_path_params(pattern: &str) -> Vec<String> {
@@ -57,15 +13,73 @@ fn extract_path_params(pattern: &str) -> Vec<String> {
 
   for segment in segments {
     if segment.starts_with(':') {
+      // 支持 :param 格式
       params.push(segment[1..].to_string());
+    } else if segment.starts_with('{') && segment.ends_with('}') {
+      // 支持 {param} 格式
+      params.push(segment[1..segment.len()-1].to_string());
     }
   }
 
   params
 }
 
-/// 生成解析字段的代码
-fn generate_parse_fields(fields: &[(syn::Ident, Type)], param_names: &[String]) -> syn::Result<Vec<TokenStream>> {
+/// 分离路径字段和查询字段
+/// 提取字段信息（包括属性）
+fn extract_route_fields(data: &Data) -> syn::Result<Vec<(syn::Ident, Type, bool)>> {
+  match data {
+    Data::Struct(data_struct) => match &data_struct.fields {
+      Fields::Named(fields_named) => {
+        let mut field_info = Vec::new();
+        for field in &fields_named.named {
+          if let Some(ident) = &field.ident {
+            let is_query = has_query_attribute(field);
+            field_info.push((ident.clone(), field.ty.clone(), is_query));
+          }
+        }
+        Ok(field_info)
+      }
+      _ => Err(syn::Error::new_spanned(&data_struct.fields, "Only named fields are supported")),
+    },
+    _ => Err(syn::Error::new(proc_macro2::Span::call_site(), "Only structs are supported")),
+  }
+}
+
+/// 检查字段是否有 #[query] 属性
+fn has_query_attribute(field: &syn::Field) -> bool {
+  for attr in &field.attrs {
+    if attr.path().is_ident("query") {
+      return true;
+    }
+  }
+  false
+}
+
+fn separate_fields(
+    fields: &[(syn::Ident, Type, bool)],
+    param_names: &[String],
+) -> (Vec<(syn::Ident, Type)>, Vec<(syn::Ident, Type)>) {
+    let mut path_fields = Vec::new();
+    let mut query_fields = Vec::new();
+
+    for (field_name, field_type, is_query) in fields {
+        let field_name_str = field_name.to_string();
+        
+        if *is_query {
+            // 这是查询字段（有 #[query] 属性）
+            query_fields.push((field_name.clone(), field_type.clone()));
+        } else if param_names.contains(&field_name_str) {
+            // 这是路径参数
+            path_fields.push((field_name.clone(), field_type.clone()));
+        }
+        // 忽略其他字段
+    }
+
+    (path_fields, query_fields)
+}
+
+/// 生成解析路径字段的代码
+fn generate_parse_path_fields(fields: &[(syn::Ident, Type)], param_names: &[String]) -> syn::Result<Vec<TokenStream>> {
   let mut parse_fields = Vec::new();
 
   for (field_name, field_type) in fields {
@@ -81,25 +95,28 @@ fn generate_parse_fields(fields: &[(syn::Ident, Type)], param_names: &[String]) 
           }
       };
       parse_fields.push(parse_code);
-    } else {
-      // 这不是路径参数，可能是查询参数或其他字段
-      // 对于 Router，我们假设所有字段都应该是路径参数
-      return Err(syn::Error::new_spanned(
-        field_name,
-        format!(
-          "Field '{}' is not found in route pattern '{}'",
-          field_name_str,
-          param_names.join(", ")
-        ),
-      ));
     }
   }
 
   Ok(parse_fields)
 }
 
-/// 生成格式化字段的代码
-fn generate_format_fields(fields: &[(syn::Ident, Type)]) -> Vec<TokenStream> {
+/// 生成解析查询字段的代码
+fn generate_parse_query_fields(fields: &[(syn::Ident, Type)]) -> Vec<TokenStream> {
+    let mut parse_fields = Vec::new();
+
+    for (field_name, field_type) in fields {
+        let parse_code = quote! {
+            #field_name: <#field_type>::parse(query_part.unwrap_or(""))?
+        };
+        parse_fields.push(parse_code);
+    }
+
+    parse_fields
+}
+
+/// 生成格式化路径字段的代码
+fn generate_format_path_fields(fields: &[(syn::Ident, Type)]) -> Vec<TokenStream> {
   let mut format_fields = Vec::new();
 
   for (field_name, _) in fields {
@@ -111,4 +128,83 @@ fn generate_format_fields(fields: &[(syn::Ident, Type)]) -> Vec<TokenStream> {
   }
 
   format_fields
+}
+
+/// 生成格式化查询逻辑的代码
+fn generate_format_query_logic(fields: &[(syn::Ident, Type)]) -> TokenStream {
+    if !fields.is_empty() {
+        let field_name = &fields[0].0;
+        return quote! {
+            let query_string = self.#field_name.format();
+            if !query_string.is_empty() {
+                url.push('?');
+                url.push_str(&query_string);
+            }
+        };
+    }
+    
+    quote! {
+        // 没有查询字段
+    }
+}
+
+/// Expand the Router derive macro
+pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
+  let struct_name = &input.ident;
+  let (pattern, _query_type) = extract_route_config(&input)?;
+  let fields = extract_route_fields(&input.data)?;
+
+  // 分析路径模式，提取参数名
+  let param_names = extract_path_params(&pattern);
+
+  // 分离路径字段和查询字段
+  let (path_fields, query_fields) = separate_fields(&fields, &param_names);
+
+  // 生成解析逻辑
+  let parse_path_fields = generate_parse_path_fields(&path_fields, &param_names)?;
+  let parse_query_fields = generate_parse_query_fields(&query_fields);
+
+  // 生成格式化逻辑
+  let format_path_fields = generate_format_path_fields(&path_fields);
+  let format_query_logic = generate_format_query_logic(&query_fields);
+
+  let expanded = quote! {
+      impl ::ruled_router::traits::Router for #struct_name {
+          fn parse(path: &str) -> Result<Self, ::ruled_router::error::ParseError> {
+              let (path_part, query_part) = ::ruled_router::utils::split_path_query(path);
+              let parser = ::ruled_router::parser::PathParser::new(#pattern)?;
+              let params = parser.match_path(path_part)?;
+
+              // 解析查询参数
+              let query_map = if let Some(query_str) = query_part {
+                  ::ruled_router::utils::parse_query_string(query_str)?
+              } else {
+                  ::std::collections::HashMap::new()
+              };
+
+              Ok(Self {
+                  #(#parse_path_fields,)*
+                  #(#parse_query_fields,)*
+              })
+          }
+
+          fn format(&self) -> String {
+              let mut params = ::std::collections::HashMap::new();
+              #(#format_path_fields)*
+
+              let formatter = ::ruled_router::formatter::PathFormatter::new(#pattern).unwrap();
+              let mut url = formatter.format(&params).unwrap();
+              
+              #format_query_logic
+              
+              url
+          }
+
+          fn pattern() -> &'static str {
+              #pattern
+          }
+      }
+  };
+
+  Ok(expanded)
 }

@@ -438,10 +438,11 @@ mod tests {
 
   #[test]
   fn test_url_encoded_query() {
-    let parser = QueryParser::new("q=hello%20world&name=John%2BDoe").unwrap();
+    let parser = QueryParser::new("q=hello%20world&name=John%2BDoe&test=hello+world").unwrap();
 
     assert_eq!(parser.get("q"), Some("hello world"));
-    assert_eq!(parser.get("name"), Some("John Doe"));
+    assert_eq!(parser.get("name"), Some("John+Doe")); // %2B 解码为 +，不是空格
+    assert_eq!(parser.get("test"), Some("hello world")); // + 解码为空格
   }
 
   #[test]

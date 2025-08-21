@@ -199,6 +199,39 @@ impl Query for SearchQuery {
 
     formatter.format()
   }
+
+  fn from_query_map(query_map: &HashMap<String, Vec<String>>) -> Result<Self, ParseError> {
+    Ok(Self {
+      q: query_map.get("q")
+        .and_then(|values| values.first())
+        .map(|s| s.to_string()),
+      tags: query_map.get("tag")
+        .map(|values| values.iter().map(|s| s.to_string()).collect())
+        .unwrap_or_default(),
+      role: query_map.get("role")
+        .and_then(|values| values.first())
+        .and_then(|s| UserRole::from_param(s).ok()),
+      page: query_map.get("page")
+        .and_then(|values| values.first())
+        .and_then(|s| s.parse().ok()),
+      limit: query_map.get("limit")
+        .and_then(|values| values.first())
+        .and_then(|s| s.parse().ok()),
+      sort_by: query_map.get("sort_by")
+        .and_then(|values| values.first())
+        .map(|s| s.to_string()),
+      order: query_map.get("order")
+        .and_then(|values| values.first())
+        .map(|s| s.to_string()),
+      active: query_map.get("active")
+        .and_then(|values| values.first())
+        .and_then(|s| s.parse().ok()),
+    })
+  }
+
+  fn to_query_string(&self) -> String {
+    self.format()
+  }
 }
 
 /// 完整的 URL 路由（路径 + 查询）

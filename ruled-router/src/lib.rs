@@ -19,4 +19,4 @@ pub use traits::{FromParam, Query, Router, ToParam};
 
 // 重新导出派生宏（当启用 derive 特性时）
 #[cfg(feature = "derive")]
-pub use ruled_router_derive::{Query, Router};
+pub use ruled_router_derive::{Query, QueryString, Router};

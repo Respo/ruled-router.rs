@@ -85,6 +85,24 @@ pub trait Query: Sized {
   /// assert_eq!(query_string, "q=rust&page=2");
   /// ```
   fn format(&self) -> String;
+
+  /// 从查询参数映射解析参数（用于 Router 派生宏）
+  ///
+  /// # 参数
+  ///
+  /// * `query_map` - 查询参数的键值对映射
+  ///
+  /// # 返回值
+  ///
+  /// 成功时返回解析后的查询参数对象，失败时返回 ParseError
+  fn from_query_map(query_map: &std::collections::HashMap<String, Vec<String>>) -> Result<Self, ParseError>;
+
+  /// 将参数格式化为查询字符串（用于 Router 派生宏）
+  ///
+  /// # 返回值
+  ///
+  /// 格式化后的查询字符串，不包含前导的 '?'
+  fn to_query_string(&self) -> String;
 }
 
 /// 类型转换 trait，用于路径参数的类型转换

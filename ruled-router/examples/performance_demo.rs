@@ -97,6 +97,27 @@ impl Query for PaginationQuery {
 
     formatter.format()
   }
+
+  fn from_query_map(query_map: &HashMap<String, Vec<String>>) -> Result<Self, ParseError> {
+    Ok(Self {
+      page: query_map.get("page")
+        .and_then(|values| values.first())
+        .and_then(|s| s.parse().ok()),
+      limit: query_map.get("limit")
+        .and_then(|values| values.first())
+        .and_then(|s| s.parse().ok()),
+      sort: query_map.get("sort")
+        .and_then(|values| values.first())
+        .map(|s| s.to_string()),
+      filter: query_map.get("filter")
+        .map(|values| values.iter().map(|s| s.to_string()).collect())
+        .unwrap_or_default(),
+    })
+  }
+
+  fn to_query_string(&self) -> String {
+    self.format()
+  }
 }
 
 /// 性能测试工具

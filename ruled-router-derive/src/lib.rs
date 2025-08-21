@@ -7,9 +7,11 @@ use proc_macro::TokenStream;
 use syn::{parse_macro_input, Data, DeriveInput, Fields, Lit, Meta};
 
 mod query;
+mod querystring;
 mod route;
 
 use query::expand_query_derive;
+use querystring::expand_querystring_derive;
 use route::expand_route_derive;
 
 /// Derive macro for implementing the Router trait
@@ -26,7 +28,7 @@ use route::expand_route_derive;
 ///     id: u32,
 /// }
 /// ```
-#[proc_macro_derive(Router, attributes(router))]
+#[proc_macro_derive(Router, attributes(router, query))]
 pub fn derive_router(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
   expand_route_derive(input).unwrap_or_else(syn::Error::into_compile_error).into()
@@ -52,25 +54,70 @@ pub fn derive_query(input: TokenStream) -> TokenStream {
   expand_query_derive(input).unwrap_or_else(syn::Error::into_compile_error).into()
 }
 
-/// Extract the pattern from route attribute
-fn extract_route_pattern(input: &DeriveInput) -> syn::Result<String> {
+/// Derive macro for implementing querystring parsing and formatting
+///
+/// This macro automatically implements parsing from and formatting to
+/// query string format for structs.
+///
+/// # Example
+///
+/// ```rust
+/// use ruled_router_derive::QueryString;
+///
+/// #[derive(QueryString)]
+/// struct UserQuery {
+///     tab: Option<String>,
+///     active: Option<bool>,
+/// }
+/// ```
+#[proc_macro_derive(QueryString)]
+pub fn derive_querystring(input: TokenStream) -> TokenStream {
+  let input = parse_macro_input!(input as DeriveInput);
+  expand_querystring_derive(input).unwrap_or_else(syn::Error::into_compile_error).into()
+}
+
+/// Extract route configuration from router attribute
+fn extract_route_config(input: &DeriveInput) -> syn::Result<(String, Option<String>)> {
   for attr in &input.attrs {
     if attr.path().is_ident("router") {
       if let Meta::List(meta_list) = &attr.meta {
-        let nested = meta_list.parse_args::<Meta>()?;
-        if let Meta::NameValue(name_value) = nested {
-          if name_value.path.is_ident("pattern") {
-            if let syn::Expr::Lit(expr_lit) = &name_value.value {
-              if let Lit::Str(lit_str) = &expr_lit.lit {
-                return Ok(lit_str.value());
+        let mut pattern = None;
+        let mut query_type = None;
+        
+        // Parse multiple name-value pairs
+        let parser = meta_list.parse_args_with(syn::punctuated::Punctuated::<Meta, syn::Token![,]>::parse_terminated)?;
+        
+        for meta in parser {
+          if let Meta::NameValue(name_value) = meta {
+            if name_value.path.is_ident("pattern") {
+              if let syn::Expr::Lit(expr_lit) = &name_value.value {
+                if let Lit::Str(lit_str) = &expr_lit.lit {
+                  pattern = Some(lit_str.value());
+                }
+              }
+            } else if name_value.path.is_ident("query") {
+              if let syn::Expr::Lit(expr_lit) = &name_value.value {
+                if let Lit::Str(lit_str) = &expr_lit.lit {
+                  query_type = Some(lit_str.value());
+                }
               }
             }
           }
+        }
+        
+        if let Some(pattern) = pattern {
+          return Ok((pattern, query_type));
         }
       }
     }
   }
   Err(syn::Error::new_spanned(input, "Missing #[router(pattern = \"...\")]"))
+}
+
+/// Extract the pattern from route attribute (backward compatibility)
+fn extract_route_pattern(input: &DeriveInput) -> syn::Result<String> {
+  let (pattern, _) = extract_route_config(input)?;
+  Ok(pattern)
 }
 
 /// Extract field information from struct

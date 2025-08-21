@@ -40,7 +40,7 @@ impl PathFormatter {
   /// use ruled_router::formatter::PathFormatter;
   /// use std::collections::HashMap;
   ///
-  /// let formatter = PathFormatter::new("/users/{id}/posts/{post_id}").unwrap();
+  /// let formatter = PathFormatter::new("/users/:id/posts/:post_id").unwrap();
   /// let mut params = HashMap::new();
   /// params.insert("id".to_string(), "123".to_string());
   /// params.insert("post_id".to_string(), "456".to_string());
@@ -245,7 +245,7 @@ impl UrlFormatter {
   /// use ruled_router::formatter::UrlFormatter;
   /// use std::collections::HashMap;
   ///
-  /// let mut formatter = UrlFormatter::new("/users/{id}").unwrap();
+  /// let mut formatter = UrlFormatter::new("/users/:id").unwrap();
   ///
   /// // 设置查询参数
   /// formatter.query_formatter_mut()
@@ -283,7 +283,7 @@ mod tests {
 
   #[test]
   fn test_path_formatter() {
-    let formatter = PathFormatter::new("/users/{id}/posts/{post_id}").unwrap();
+    let formatter = PathFormatter::new("/users/:id/posts/:post_id").unwrap();
 
     let mut params = HashMap::new();
     params.insert("id".to_string(), "123".to_string());
@@ -295,7 +295,7 @@ mod tests {
 
   #[test]
   fn test_path_formatter_typed() {
-    let formatter = PathFormatter::new("/users/{id}").unwrap();
+    let formatter = PathFormatter::new("/users/:id").unwrap();
 
     let mut params = HashMap::new();
     params.insert("id".to_string(), 123u32);
@@ -347,7 +347,7 @@ mod tests {
 
   #[test]
   fn test_url_formatter() {
-    let mut formatter = UrlFormatter::new("/users/{id}").unwrap();
+    let mut formatter = UrlFormatter::new("/users/:id").unwrap();
 
     formatter.query_formatter_mut().set("page", 1).set("size", 20);
 

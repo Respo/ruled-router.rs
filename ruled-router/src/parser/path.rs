@@ -62,6 +62,28 @@ impl PathParser {
     let mut parsed_segments = Vec::new();
 
     for segment in segments {
+      // 处理复合段，如 ":id?:format"
+      if segment.contains("?:") && segment.starts_with(':') {
+        // 分割复合段
+        let parts: Vec<&str> = segment.split("?:").collect();
+        if parts.len() == 2 {
+          // 第一部分是必需参数
+          let param_name = parts[0].strip_prefix(':').unwrap();
+          if param_name.is_empty() {
+            return Err(ParseError::invalid_path("Parameter must have a name"));
+          }
+          parsed_segments.push(PathSegment::Parameter(param_name.to_string()));
+          
+          // 第二部分是可选参数
+          let optional_name = parts[1];
+          if optional_name.is_empty() {
+            return Err(ParseError::invalid_path("Optional parameter must have a name"));
+          }
+          parsed_segments.push(PathSegment::OptionalParameter(optional_name.to_string()));
+          continue;
+        }
+      }
+      
       let parsed_segment = if let Some(name) = segment.strip_prefix('*') {
         // 通配符段
         if name.is_empty() {
@@ -69,13 +91,20 @@ impl PathParser {
         }
         PathSegment::Wildcard(name.to_string())
       } else if let Some(name) = segment.strip_prefix("?:") {
-        // 可选参数段
+        // 可选参数段 (?:name)
         if name.is_empty() {
           return Err(ParseError::invalid_path("Optional parameter must have a name"));
         }
         PathSegment::OptionalParameter(name.to_string())
       } else if let Some(name) = segment.strip_prefix(':') {
-        // 参数段
+        // 冒号参数段 (:name)
+        if name.is_empty() {
+          return Err(ParseError::invalid_path("Parameter must have a name"));
+        }
+        PathSegment::Parameter(name.to_string())
+      } else if segment.starts_with('{') && segment.ends_with('}') {
+        // 大括号参数段 ({name})
+        let name = &segment[1..segment.len()-1];
         if name.is_empty() {
           return Err(ParseError::invalid_path("Parameter must have a name"));
         }

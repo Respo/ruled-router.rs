@@ -74,6 +74,21 @@ impl Query for SimpleQuery {
 
     formatter.format()
   }
+
+  fn from_query_map(query_map: &std::collections::HashMap<String, Vec<String>>) -> Result<Self, ParseError> {
+    Ok(Self {
+      name: query_map.get("name")
+        .and_then(|values| values.first())
+        .map(|s| s.to_string()),
+      active: query_map.get("active")
+        .and_then(|values| values.first())
+        .and_then(|s| s.parse().ok()),
+    })
+  }
+
+  fn to_query_string(&self) -> String {
+    self.format()
+  }
 }
 
 #[cfg(test)]

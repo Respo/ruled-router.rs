@@ -19,3 +19,7 @@ derive = ["ruled-router-derive"]
 
 [dev-dependencies]
 trybuild = { workspace = true }
+
+[[example]]
+name = "query_field_usage"
+path = "examples/query_field_usage.rs"
