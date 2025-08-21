@@ -26,7 +26,7 @@ ruled-router = "0.1.0"
 use ruled_router::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Router)]
-#[route(pattern = "users/:id")]
+#[router(pattern = "users/:id")]
 struct UserRoute {
     id: u32,
 }
@@ -90,17 +90,17 @@ fn main() {
 ```rust
 #[derive(Router)]
 struct AppRouter {
-    #[route("/api")]
+    #[router("/api")]
     api: ApiRouter,
-    #[route("/admin")]
+    #[router("/admin")]
     admin: AdminRouter,
 }
 
 #[derive(Router)]
 struct ApiRouter {
-    #[route("/users/:id")]
+    #[router("/users/:id")]
     user: UserRoute,
-    #[route("/posts")]
+    #[router("/posts")]
     posts: PostsRoute,
 }
 ```
@@ -115,7 +115,7 @@ struct ApiRouter {
 ```rust
 #[derive(Router)]
 struct SearchRoute {
-    #[route("/search/:category")]
+    #[router("/search/:category")]
     category: String,
     #[query]
     params: SearchParams,
@@ -136,7 +136,7 @@ struct SearchParams {
 #### 1. 主要宏
 - `#[derive(Router)]`: 为结构体生成路由解析器
 - `#[derive(Query)]`: 为结构体生成查询参数解析器
-- `#[route("path")]`: 定义路由路径模式
+- `#[router("path")]`: 定义路由路径模式
 - `#[query]`: 标记查询参数字段
 
 #### 2. 生成的 Trait
@@ -177,7 +177,7 @@ use ruled_router::{Router, Query};
 
 #[derive(Router, Debug, PartialEq)]
 struct UserProfile {
-    #[route("/user/:id/profile")]
+    #[router("/user/:id/profile")]
     id: u32,
     #[query]
     options: ProfileOptions,
@@ -206,17 +206,17 @@ fn main() {
 ```rust
 #[derive(Router)]
 struct AppRouter {
-    #[route("/")]
+    #[router("/")]
     home: HomeRoute,
-    #[route("/api/v1")]
+    #[router("/api/v1")]
     api: ApiRouter,
 }
 
 #[derive(Router)]
 struct ApiRouter {
-    #[route("/users/:id")]
+    #[router("/users/:id")]
     user: UserRoute,
-    #[route("/posts/:slug")]
+    #[router("/posts/:slug")]
     post: PostRoute,
 }
 ```

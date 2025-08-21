@@ -71,7 +71,7 @@ pub trait ToParam {
 ```rust
 #[derive(Router)]
 struct UserProfile {
-    #[route("/user/:id/profile/:section")]
+    #[router("/user/:id/profile/:section")]
     id: u32,
     section: String,
     #[query]
