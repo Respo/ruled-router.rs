@@ -23,6 +23,8 @@ struct ProductRoute {
 }
 
 impl Router for ProductRoute {
+  type SubRouterMatch = ::ruled_router::NoSubRouter;
+  
   fn parse(path: &str) -> Result<Self, ParseError> {
     let (path_part, _) = ruled_router::utils::split_path_query(path);
     let parser = PathParser::new("/products/:category/:id")?;

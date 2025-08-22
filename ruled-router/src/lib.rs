@@ -15,8 +15,8 @@ pub mod utils;
 pub use error::{ParseError, ParseResult};
 pub use formatter::{PathFormatter, QueryFormatter, UrlFormatter};
 pub use parser::{PathParser, QueryParser};
-pub use traits::{FromParam, Query, Router, ToParam};
+pub use traits::{FromParam, NoSubRouter, Query, Router, RouterMatch, ToParam};
 
 // 重新导出派生宏（当启用 derive 特性时）
 #[cfg(feature = "derive")]
-pub use ruled_router_derive::{Query, QueryString, Router};
+pub use ruled_router_derive::{Query, QueryString, Router, RouterMatch};

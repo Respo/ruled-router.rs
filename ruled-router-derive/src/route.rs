@@ -4,7 +4,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{DeriveInput, Type, Data, Fields};
 
-use crate::{extract_route_config, extract_route_pattern, extract_struct_fields};
+use crate::extract_route_config;
 
 /// 从路径模式中提取参数名
 fn extract_path_params(pattern: &str) -> Vec<String> {
@@ -170,6 +170,8 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
 
   let expanded = quote! {
       impl ::ruled_router::traits::Router for #struct_name {
+          type SubRouterMatch = ::ruled_router::traits::NoSubRouter;
+          
           fn parse(path: &str) -> Result<Self, ::ruled_router::error::ParseError> {
               let (path_part, query_part) = ::ruled_router::utils::split_path_query(path);
               let parser = ::ruled_router::parser::PathParser::new(#pattern)?;

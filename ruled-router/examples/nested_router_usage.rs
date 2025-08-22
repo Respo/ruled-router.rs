@@ -1,19 +1,19 @@
-//! 嵌套路由使用示例
+//! 嵌套路由使用示例 - RouterMatch 设计
 //!
-//! 这个示例展示了如何使用 #[derive(Router)] 和 #[derive(Query)] 实现嵌套路由结构。
+//! 这个示例展示了新的嵌套路由设计：RouterMatch > Router > RouterMatch > Router
 //! 主要特性：
-//! - 展示路径参数的嵌套结构
-//! - 演示如何组合使用 Router 和 Query
-//! - 支持复杂的 URL 解析和构建
-//! - 提供实用的路由组合模式
+//! - RouterMatch 枚举表示路由选择
+//! - Router 结构体表示具体路由
+//! - 支持任意深度的嵌套
+//! - 类型安全的路由匹配
 
 use ruled_router::prelude::*;
-use std::fmt;
+use ruled_router::RouterMatch;
 
 // ===== 查询参数定义 =====
 
 /// 用户查询参数
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, Query)]
 struct UserQuery {
   /// 包含的字段列表
   include_fields: Vec<String>,
@@ -23,51 +23,8 @@ struct UserQuery {
   format: Option<String>,
 }
 
-impl Query for UserQuery {
-  fn parse(query: &str) -> Result<Self, ParseError> {
-    let parser = QueryParser::new(query)?;
-    Ok(Self {
-      include_fields: parser.get_all("include").iter().map(|s| s.to_string()).collect(),
-      include_sensitive: parser.get_optional("include_sensitive")?,
-      format: parser.get_optional("format")?,
-    })
-  }
-
-  fn format(&self) -> String {
-    let mut formatter = QueryFormatter::new();
-    for field in &self.include_fields {
-      formatter.add("include", field.clone());
-    }
-    if let Some(sensitive) = self.include_sensitive {
-      formatter.set("include_sensitive", sensitive.to_string());
-    }
-    if let Some(format) = &self.format {
-      formatter.set("format", format.clone());
-    }
-    formatter.format()
-  }
-
-  fn from_query_map(query_map: &std::collections::HashMap<String, Vec<String>>) -> Result<Self, ParseError> {
-    Ok(Self {
-      include_fields: query_map
-        .get("include")
-        .map(|values| values.iter().map(|s| s.to_string()).collect())
-        .unwrap_or_default(),
-      include_sensitive: query_map
-        .get("include_sensitive")
-        .and_then(|values| values.first())
-        .and_then(|s| s.parse().ok()),
-      format: query_map.get("format").and_then(|values| values.first()).map(|s| s.to_string()),
-    })
-  }
-
-  fn to_query_string(&self) -> String {
-    self.format()
-  }
-}
-
 /// 博客文章查询参数
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, Query)]
 struct PostQuery {
   /// 是否包含评论
   include_comments: Option<bool>,
@@ -75,66 +32,10 @@ struct PostQuery {
   comment_sort: Option<String>,
   /// 评论页码
   comment_page: Option<u32>,
-  /// 是否包含草稿
-  include_draft: Option<bool>,
 }
 
-impl Query for PostQuery {
-  fn parse(query: &str) -> Result<Self, ParseError> {
-    let parser = QueryParser::new(query)?;
-    Ok(Self {
-      include_comments: parser.get_optional("include_comments")?,
-      comment_sort: parser.get_optional("comment_sort")?,
-      comment_page: parser.get_optional("comment_page")?,
-      include_draft: parser.get_optional("include_draft")?,
-    })
-  }
-
-  fn format(&self) -> String {
-    let mut formatter = QueryFormatter::new();
-    if let Some(comments) = self.include_comments {
-      formatter.set("include_comments", comments.to_string());
-    }
-    if let Some(sort) = &self.comment_sort {
-      formatter.set("comment_sort", sort.clone());
-    }
-    if let Some(page) = self.comment_page {
-      formatter.set("comment_page", page.to_string());
-    }
-    if let Some(draft) = self.include_draft {
-      formatter.set("include_draft", draft.to_string());
-    }
-    formatter.format()
-  }
-
-  fn from_query_map(query_map: &std::collections::HashMap<String, Vec<String>>) -> Result<Self, ParseError> {
-    Ok(Self {
-      include_comments: query_map
-        .get("include_comments")
-        .and_then(|values| values.first())
-        .and_then(|s| s.parse().ok()),
-      comment_sort: query_map
-        .get("comment_sort")
-        .and_then(|values| values.first())
-        .map(|s| s.to_string()),
-      comment_page: query_map
-        .get("comment_page")
-        .and_then(|values| values.first())
-        .and_then(|s| s.parse().ok()),
-      include_draft: query_map
-        .get("include_draft")
-        .and_then(|values| values.first())
-        .and_then(|s| s.parse().ok()),
-    })
-  }
-
-  fn to_query_string(&self) -> String {
-    self.format()
-  }
-}
-
-/// API 版本查询参数
-#[derive(Debug, Clone, PartialEq, Default)]
+/// API 查询参数
+#[derive(Debug, Clone, PartialEq, Default, Query)]
 struct ApiQuery {
   /// API 版本
   version: Option<String>,
@@ -144,47 +45,7 @@ struct ApiQuery {
   format: Option<String>,
 }
 
-impl Query for ApiQuery {
-  fn parse(query: &str) -> Result<Self, ParseError> {
-    let parser = QueryParser::new(query)?;
-    Ok(Self {
-      version: parser.get_optional("version")?,
-      debug: parser.get_optional("debug")?,
-      format: parser.get_optional("format")?,
-    })
-  }
-
-  fn format(&self) -> String {
-    let mut formatter = QueryFormatter::new();
-    if let Some(version) = &self.version {
-      formatter.set("version", version.clone());
-    }
-    if let Some(debug) = self.debug {
-      formatter.set("debug", debug.to_string());
-    }
-    if let Some(format) = &self.format {
-      formatter.set("format", format.clone());
-    }
-    formatter.format()
-  }
-
-  fn from_query_map(query_map: &std::collections::HashMap<String, Vec<String>>) -> Result<Self, ParseError> {
-    Ok(Self {
-      version: query_map.get("version").and_then(|values| values.first()).map(|s| s.to_string()),
-      debug: query_map
-        .get("debug")
-        .and_then(|values| values.first())
-        .and_then(|s| s.parse().ok()),
-      format: query_map.get("format").and_then(|values| values.first()).map(|s| s.to_string()),
-    })
-  }
-
-  fn to_query_string(&self) -> String {
-    self.format()
-  }
-}
-
-// ===== 路由定义 =====
+// ===== 基础路由定义 =====
 
 /// 用户路由
 #[derive(Debug, Clone, PartialEq, Router)]
@@ -195,295 +56,442 @@ struct UserRoute {
   query: UserQuery,
 }
 
-/// 博客文章路由
+/// 用户资料路由
 #[derive(Debug, Clone, PartialEq, Router)]
-#[router(pattern = "/blog/:year/:month/:slug")]
-struct PostRoute {
-  year: u32,
-  month: u32,
-  slug: String,
-}
-
-/// 用户博客路由 - 嵌套路径参数
-#[derive(Debug, Clone, PartialEq, Router)]
-#[router(pattern = "/users/:user_id/blog/:year/:month/:slug")]
-struct UserPostRoute {
+#[router(pattern = "/users/:user_id/profile")]
+struct UserProfileRoute {
   user_id: u32,
-  year: u32,
-  month: u32,
-  slug: String,
-}
-
-/// API 根路由
-#[derive(Debug, Clone, PartialEq, Router)]
-#[router(pattern = "/api/:version")]
-struct ApiRoute {
-  version: String,
-}
-
-/// API 用户路由 - 嵌套 API 版本和用户ID
-#[derive(Debug, Clone, PartialEq, Router)]
-#[router(pattern = "/api/:version/users/:id")]
-struct ApiUserRoute {
-  version: String,
-  id: u32,
-}
-
-/// 复杂嵌套路由 - 多层路径参数
-#[derive(Debug, Clone, PartialEq, Router)]
-#[router(pattern = "/api/:version/users/:user_id/posts/:post_id/comments/:comment_id")]
-struct NestedCommentRoute {
-  version: String,
-  user_id: u32,
-  post_id: u32,
-  comment_id: u32,
-}
-
-// ===== 路由和查询的组合结构 =====
-
-/// 用户路由和查询的组合
-#[derive(Debug, Clone, PartialEq)]
-struct UserRouteWithQuery {
-  route: UserRoute,
+  #[query]
   query: UserQuery,
 }
 
-/// 博客文章路由和查询的组合
-#[derive(Debug, Clone, PartialEq)]
-struct PostRouteWithQuery {
-  route: PostRoute,
+/// 用户文章路由
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/users/:user_id/posts/:post_id")]
+struct UserPostRoute {
+  user_id: u32,
+  post_id: u32,
+  #[query]
   query: PostQuery,
 }
 
-/// API 用户路由和查询的组合
+/// 用户设置路由
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/users/:user_id/settings")]
+struct UserSettingsRoute {
+  user_id: u32,
+}
+
+/// 博客路由
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/blog/:year/:month/:slug")]
+struct BlogRoute {
+  year: u32,
+  month: u32,
+  slug: String,
+  #[query]
+  query: PostQuery,
+}
+
+/// API v1 用户路由
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/api/v1/users/:id")]
+struct ApiV1UserRoute {
+  id: u32,
+  #[query]
+  query: ApiQuery,
+}
+
+/// API v1 文章路由
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/api/v1/posts/:id")]
+struct ApiV1PostRoute {
+  id: u32,
+  #[query]
+  query: ApiQuery,
+}
+
+/// API v2 用户路由
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/api/v2/users/:id")]
+struct ApiV2UserRoute {
+  id: u32,
+  #[query]
+  query: ApiQuery,
+}
+
+// ===== RouterMatch 枚举定义（手动实现）=====
+
+/// 用户子路由匹配
 #[derive(Debug, Clone, PartialEq)]
-struct ApiUserRouteWithQuery {
-  route: ApiUserRoute,
-  query: UserQuery,
+enum UserSubRouterMatch {
+  Profile(UserProfileRoute),
+  Post(UserPostRoute),
+  Settings(UserSettingsRoute),
 }
 
-// ===== 实用函数 =====
-
-/// 解析完整的 URL（路径 + 查询参数）
-fn parse_full_url<R, Q>(url: &str) -> Result<(R, Q), Box<dyn std::error::Error>>
-where
-  R: Router,
-  Q: Query + Default,
-{
-  let (path, query_str) = if let Some(pos) = url.find('?') {
-    (&url[..pos], &url[pos + 1..])
-  } else {
-    (url, "")
-  };
-
-  let route = R::parse(path)?;
-  let query = if !query_str.is_empty() {
-    Q::parse(query_str)?
-  } else {
-    Q::default()
-  };
-
-  Ok((route, query))
+/// API v1 子路由匹配
+#[derive(Debug, Clone, PartialEq)]
+enum ApiV1SubRouterMatch {
+  User(ApiV1UserRoute),
+  Post(ApiV1PostRoute),
 }
 
-/// 构建完整的 URL
-fn build_full_url<R, Q>(route: &R, query: &Q) -> String
-where
-  R: Router,
-  Q: Query,
-{
-  let path = route.format();
-  let query_str = query.format();
+/// API v2 子路由匹配
+#[derive(Debug, Clone, PartialEq)]
+enum ApiV2SubRouterMatch {
+  User(ApiV2UserRoute),
+}
 
-  if query_str.is_empty() {
-    path
-  } else {
-    format!("{}?{}", path, query_str)
+/// API 版本路由匹配
+#[derive(Debug, Clone, PartialEq)]
+enum ApiVersionRouterMatch {
+  V1(ApiV1SubRouterMatch),
+  V2(ApiV2SubRouterMatch),
+}
+
+/// 顶级应用路由匹配
+#[derive(Debug, Clone, PartialEq)]
+enum AppRouterMatch {
+  User(UserRoute),
+  UserSub(UserSubRouterMatch),
+  Blog(BlogRoute),
+  Api(ApiVersionRouterMatch),
+}
+
+// ===== 手动实现 RouterMatch trait =====
+
+impl RouterMatch for UserSubRouterMatch {
+  fn try_parse(path: &str) -> Result<Self, ParseError> {
+    if let Ok(profile) = UserProfileRoute::parse(path) {
+      return Ok(UserSubRouterMatch::Profile(profile));
+    }
+    if let Ok(post) = UserPostRoute::parse(path) {
+      return Ok(UserSubRouterMatch::Post(post));
+    }
+    if let Ok(settings) = UserSettingsRoute::parse(path) {
+      return Ok(UserSubRouterMatch::Settings(settings));
+    }
+    Err(ParseError::invalid_path("No matching user sub route"))
+  }
+
+  fn format(&self) -> String {
+    match self {
+      UserSubRouterMatch::Profile(route) => route.format(),
+      UserSubRouterMatch::Post(route) => route.format(),
+      UserSubRouterMatch::Settings(route) => route.format(),
+    }
+  }
+
+  fn patterns() -> Vec<&'static str> {
+    vec![UserProfileRoute::pattern(), UserPostRoute::pattern(), UserSettingsRoute::pattern()]
+  }
+
+  fn try_parse_with_remaining(path: &str, _consumed: usize) -> Result<(Self, &str), ParseError> {
+    // 简化实现，暂时不支持剩余路径
+    Self::try_parse(path).map(|route| (route, ""))
   }
 }
 
-/// 显示路由和查询信息
-fn display_route_query_info<R, Q>(route: &R, query: &Q, description: &str)
-where
-  R: Router + fmt::Debug,
-  Q: Query + fmt::Debug,
-{
-  println!("\n=== {} ===", description);
-  println!("路由结构: {:#?}", route);
-  println!("查询结构: {:#?}", query);
-  println!("路径: {}", route.format());
-  println!("查询: {}", query.format());
-  println!("完整URL: {}", build_full_url(route, query));
+impl RouterMatch for ApiV1SubRouterMatch {
+  fn try_parse(path: &str) -> Result<Self, ParseError> {
+    if let Ok(user) = ApiV1UserRoute::parse(path) {
+      return Ok(ApiV1SubRouterMatch::User(user));
+    }
+    if let Ok(post) = ApiV1PostRoute::parse(path) {
+      return Ok(ApiV1SubRouterMatch::Post(post));
+    }
+    Err(ParseError::invalid_path("No matching API v1 sub route"))
+  }
+
+  fn format(&self) -> String {
+    match self {
+      ApiV1SubRouterMatch::User(route) => route.format(),
+      ApiV1SubRouterMatch::Post(route) => route.format(),
+    }
+  }
+
+  fn patterns() -> Vec<&'static str> {
+    vec![ApiV1UserRoute::pattern(), ApiV1PostRoute::pattern()]
+  }
+
+  fn try_parse_with_remaining(path: &str, _consumed: usize) -> Result<(Self, &str), ParseError> {
+    Self::try_parse(path).map(|route| (route, ""))
+  }
 }
 
-/// 显示单独的路由信息
-fn display_route_info<R>(route: &R, description: &str)
-where
-  R: Router + fmt::Debug,
-{
-  println!("\n=== {} ===", description);
-  println!("路由结构: {:#?}", route);
-  println!("路径: {}", route.format());
+impl RouterMatch for ApiV2SubRouterMatch {
+  fn try_parse(path: &str) -> Result<Self, ParseError> {
+    if let Ok(user) = ApiV2UserRoute::parse(path) {
+      return Ok(ApiV2SubRouterMatch::User(user));
+    }
+    Err(ParseError::invalid_path("No matching API v2 sub route"))
+  }
+
+  fn format(&self) -> String {
+    match self {
+      ApiV2SubRouterMatch::User(route) => route.format(),
+    }
+  }
+
+  fn patterns() -> Vec<&'static str> {
+    vec![ApiV2UserRoute::pattern()]
+  }
+
+  fn try_parse_with_remaining(path: &str, _consumed: usize) -> Result<(Self, &str), ParseError> {
+    Self::try_parse(path).map(|route| (route, ""))
+  }
 }
 
-fn main() {
-  println!("=== 嵌套路由使用示例 ===");
-
-  // 1. 基本用户路由示例
-  println!("\n1. 基本用户路由示例:");
-  let user_url = "/users/123?include=profile&include=settings&include_sensitive=true&format=json";
-  println!("  URL: {}", user_url);
-
-  match parse_full_url::<UserRoute, UserQuery>(user_url) {
-    Ok((route, query)) => {
-      display_route_query_info(&route, &query, "用户路由解析结果");
-
-      // 验证往返转换
-      let reconstructed = build_full_url(&route, &query);
-      println!("  往返转换: {}", reconstructed);
+impl RouterMatch for ApiVersionRouterMatch {
+  fn try_parse(path: &str) -> Result<Self, ParseError> {
+    if let Ok(v1) = ApiV1SubRouterMatch::try_parse(path) {
+      return Ok(ApiVersionRouterMatch::V1(v1));
     }
-    Err(e) => println!("  解析失败: {}", e),
+    if let Ok(v2) = ApiV2SubRouterMatch::try_parse(path) {
+      return Ok(ApiVersionRouterMatch::V2(v2));
+    }
+    Err(ParseError::invalid_path("No matching API version route"))
   }
 
-  // 2. 博客文章路由示例
-  println!("\n2. 博客文章路由示例:");
-  let post_url = "/blog/2024/01/rust-async-programming?include_comments=true&comment_sort=date&comment_page=2";
-  println!("  URL: {}", post_url);
-
-  match parse_full_url::<PostRoute, PostQuery>(post_url) {
-    Ok((route, query)) => {
-      display_route_query_info(&route, &query, "博客文章路由解析结果");
+  fn format(&self) -> String {
+    match self {
+      ApiVersionRouterMatch::V1(route) => route.format(),
+      ApiVersionRouterMatch::V2(route) => route.format(),
     }
-    Err(e) => println!("  解析失败: {}", e),
   }
 
-  // 3. 用户博客路由示例（嵌套路由）
-  println!("\n3. 用户博客路由示例:");
-  let user_post_url = "/users/456/blog/2024/01/my-first-post?include_comments=false&include_draft=true";
-  println!("  URL: {}", user_post_url);
-
-  match parse_full_url::<UserPostRoute, PostQuery>(user_post_url) {
-    Ok((route, query)) => {
-      display_route_query_info(&route, &query, "用户博客路由解析结果");
-    }
-    Err(e) => println!("  解析失败: {}", e),
+  fn patterns() -> Vec<&'static str> {
+    let mut patterns = Vec::new();
+    patterns.extend(ApiV1SubRouterMatch::patterns());
+    patterns.extend(ApiV2SubRouterMatch::patterns());
+    patterns
   }
 
-  // 4. API 路由示例
-  println!("\n4. API 路由示例:");
-  let api_url = "/api/v2?debug=true&format=xml";
-  println!("  URL: {}", api_url);
+  fn try_parse_with_remaining(path: &str, _consumed: usize) -> Result<(Self, &str), ParseError> {
+    Self::try_parse(path).map(|route| (route, ""))
+  }
+}
 
-  match parse_full_url::<ApiRoute, ApiQuery>(api_url) {
-    Ok((route, query)) => {
-      display_route_query_info(&route, &query, "API 路由解析结果");
+impl RouterMatch for AppRouterMatch {
+  fn try_parse(path: &str) -> Result<Self, ParseError> {
+    if let Ok(user) = UserRoute::parse(path) {
+      return Ok(AppRouterMatch::User(user));
     }
-    Err(e) => println!("  解析失败: {}", e),
+    if let Ok(user_sub) = UserSubRouterMatch::try_parse(path) {
+      return Ok(AppRouterMatch::UserSub(user_sub));
+    }
+    if let Ok(blog) = BlogRoute::parse(path) {
+      return Ok(AppRouterMatch::Blog(blog));
+    }
+    if let Ok(api) = ApiVersionRouterMatch::try_parse(path) {
+      return Ok(AppRouterMatch::Api(api));
+    }
+    Err(ParseError::invalid_path("No matching route"))
   }
 
-  // 5. API 用户路由示例（嵌套 API + 用户）
-  println!("\n5. API 用户路由示例:");
-  let api_user_url = "/api/v1/users/789?include=profile&include=permissions&format=json";
-  println!("  URL: {}", api_user_url);
-
-  match parse_full_url::<ApiUserRoute, UserQuery>(api_user_url) {
-    Ok((route, query)) => {
-      display_route_query_info(&route, &query, "API 用户路由解析结果");
+  fn format(&self) -> String {
+    match self {
+      AppRouterMatch::User(route) => route.format(),
+      AppRouterMatch::UserSub(route) => route.format(),
+      AppRouterMatch::Blog(route) => route.format(),
+      AppRouterMatch::Api(route) => route.format(),
     }
-    Err(e) => println!("  解析失败: {}", e),
   }
 
-  // 6. 复杂嵌套路由示例
-  println!("\n6. 复杂嵌套路由示例:");
-  let nested_url = "/api/v3/users/100/posts/200/comments/300?version=beta&debug=false";
-  println!("  URL: {}", nested_url);
-
-  match parse_full_url::<NestedCommentRoute, ApiQuery>(nested_url) {
-    Ok((route, query)) => {
-      display_route_query_info(&route, &query, "复杂嵌套路由解析结果");
-    }
-    Err(e) => println!("  解析失败: {}", e),
+  fn patterns() -> Vec<&'static str> {
+    let mut patterns = Vec::new();
+    patterns.push(UserRoute::pattern());
+    patterns.extend(UserSubRouterMatch::patterns());
+    patterns.push(BlogRoute::pattern());
+    patterns.extend(ApiVersionRouterMatch::patterns());
+    patterns
   }
 
-  // 7. 手动构建路由示例
-  println!("\n7. 手动构建路由示例:");
+  fn try_parse_with_remaining(path: &str, _consumed: usize) -> Result<(Self, &str), ParseError> {
+    Self::try_parse(path).map(|route| (route, ""))
+  }
+}
 
-  let manual_route = UserRoute { 
-    id: 999,
-    query: UserQuery {
-      include_fields: vec!["profile".to_string(), "settings".to_string(), "preferences".to_string()],
-      include_sensitive: Some(false),
-      format: Some("xml".to_string()),
+// ===== 辅助函数 =====
+
+/// 解析完整的嵌套路由
+fn parse_nested_route(url: &str) -> Result<AppRouterMatch, Box<dyn std::error::Error>> {
+  AppRouterMatch::try_parse(url).map_err(|e| e.into())
+}
+
+/// 格式化嵌套路由为 URL
+fn format_nested_route(route_match: &AppRouterMatch) -> String {
+  route_match.format()
+}
+
+/// 显示路由匹配信息
+fn display_route_match_info(route_match: &AppRouterMatch, description: &str) {
+  println!("\n=== {description} ===");
+  println!("Route Match: {route_match:?}");
+  println!("Formatted URL: {}", route_match.format());
+
+  match route_match {
+    AppRouterMatch::User(user_route) => {
+      println!("User ID: {}", user_route.id);
+      println!("Query: {:?}", user_route.query);
+    }
+    AppRouterMatch::UserSub(user_sub) => match user_sub {
+      UserSubRouterMatch::Profile(profile) => {
+        println!("User Profile - User ID: {}", profile.user_id);
+        println!("Query: {:?}", profile.query);
+      }
+      UserSubRouterMatch::Post(post) => {
+        println!("User Post - User ID: {}, Post ID: {}", post.user_id, post.post_id);
+        println!("Query: {:?}", post.query);
+      }
+      UserSubRouterMatch::Settings(settings) => {
+        println!("User Settings - User ID: {}", settings.user_id);
+      }
     },
-  };
-  let manual_query = UserQuery {
-    include_fields: vec!["profile".to_string(), "settings".to_string(), "preferences".to_string()],
-    include_sensitive: Some(false),
-    format: Some("xml".to_string()),
-  };
-
-  display_route_query_info(&manual_route, &manual_query, "手动构建的用户路由");
-
-  // 8. 组合结构示例
-  println!("\n8. 组合结构示例:");
-
-  let combined = UserRouteWithQuery {
-    route: UserRoute { 
-      id: 555,
-      query: UserQuery {
-        include_fields: vec!["profile".to_string(), "avatar".to_string()],
-        include_sensitive: Some(true),
-        format: Some("json".to_string()),
+    AppRouterMatch::Blog(blog) => {
+      println!("Blog - Year: {}, Month: {}, Slug: {}", blog.year, blog.month, blog.slug);
+      println!("Query: {:?}", blog.query);
+    }
+    AppRouterMatch::Api(api_version) => match api_version {
+      ApiVersionRouterMatch::V1(v1_sub) => match v1_sub {
+        ApiV1SubRouterMatch::User(user) => {
+          println!("API v1 User - ID: {}", user.id);
+          println!("Query: {:?}", user.query);
+        }
+        ApiV1SubRouterMatch::Post(post) => {
+          println!("API v1 Post - ID: {}", post.id);
+          println!("Query: {:?}", post.query);
+        }
+      },
+      ApiVersionRouterMatch::V2(v2_sub) => match v2_sub {
+        ApiV2SubRouterMatch::User(user) => {
+          println!("API v2 User - ID: {}", user.id);
+          println!("Query: {:?}", user.query);
+        }
       },
     },
+  }
+}
+
+/// 演示路由构建
+fn demonstrate_route_building() {
+  println!("\n=== 路由构建演示 ===");
+
+  // 构建用户路由
+  let user_route = UserRoute {
+    id: 123,
     query: UserQuery {
-      include_fields: vec!["profile".to_string(), "avatar".to_string()],
-      include_sensitive: Some(true),
+      include_fields: vec!["name".to_string(), "email".to_string()],
+      include_sensitive: Some(false),
       format: Some("json".to_string()),
     },
   };
+  let user_match = AppRouterMatch::User(user_route);
+  println!("用户路由: {}", user_match.format());
 
-  println!("  组合结构: {:#?}", combined);
-  println!("  路径: {}", combined.route.format());
-  println!("  查询: {}", combined.query.format());
-  println!("  完整URL: {}", build_full_url(&combined.route, &combined.query));
+  // 构建用户文章路由
+  let user_post_route = UserPostRoute {
+    user_id: 456,
+    post_id: 789,
+    query: PostQuery {
+      include_comments: Some(true),
+      comment_sort: Some("date".to_string()),
+      comment_page: Some(1),
+    },
+  };
+  let user_post_match = AppRouterMatch::UserSub(UserSubRouterMatch::Post(user_post_route));
+  println!("用户文章路由: {}", user_post_match.format());
 
-  // 9. 性能测试
-  println!("\n9. 性能测试:");
+  // 构建 API 路由
+  let api_user_route = ApiV1UserRoute {
+    id: 999,
+    query: ApiQuery {
+      version: Some("1.0".to_string()),
+      debug: Some(true),
+      format: Some("xml".to_string()),
+    },
+  };
+  let api_match = AppRouterMatch::Api(ApiVersionRouterMatch::V1(ApiV1SubRouterMatch::User(api_user_route)));
+  println!("API 路由: {}", api_match.format());
+}
 
+fn main() {
+  println!("嵌套路由使用示例 - RouterMatch 设计");
+  println!("=====================================\n");
+
+  // 显示所有可能的路由模式
+  println!("支持的路由模式:");
+  for pattern in AppRouterMatch::patterns() {
+    println!("  - {pattern}");
+  }
+
+  // 测试各种路由解析
   let test_urls = vec![
-    "/users/1?include=profile",
-    "/blog/2024/01/test?include_comments=true",
-    "/api/v1/users/2?format=json",
-    "/api/v2/users/3/posts/4/comments/5?debug=true",
+    "/users/123?include=name&include=email&format=json",
+    "/users/456/profile?include_sensitive=false",
+    "/users/789/posts/101?include_comments=true&comment_sort=date",
+    "/users/999/settings",
+    "/blog/2024/03/rust-tutorial?include_comments=true",
+    "/api/v1/users/555?debug=true&format=xml",
+    "/api/v1/posts/777?version=1.2",
+    "/api/v2/users/888?format=json",
   ];
 
-  let iterations = 1000;
-  let start = std::time::Instant::now();
-
-  for _ in 0..iterations {
-    for url in &test_urls {
-      if url.starts_with("/users") {
-        let _ = parse_full_url::<UserRoute, UserQuery>(url);
-      } else if url.starts_with("/blog") {
-        let _ = parse_full_url::<PostRoute, PostQuery>(url);
-      } else if url.contains("/users/") && url.contains("/posts/") {
-        let _ = parse_full_url::<NestedCommentRoute, ApiQuery>(url);
-      } else if url.contains("/api/") && url.contains("/users/") {
-        let _ = parse_full_url::<ApiUserRoute, UserQuery>(url);
+  for url in test_urls {
+    match parse_nested_route(url) {
+      Ok(route_match) => {
+        display_route_match_info(&route_match, &format!("解析 URL: {url}"));
+      }
+      Err(e) => {
+        println!("\n解析失败 - URL: {url}");
+        println!("错误: {e}");
       }
     }
   }
 
-  let duration = start.elapsed();
-  println!(
-    "  {} 次嵌套路由解析耗时: {:?} (平均: {:?})",
-    iterations * test_urls.len(),
-    duration,
-    duration / (iterations * test_urls.len()) as u32
-  );
+  // 演示路由构建
+  demonstrate_route_building();
 
-  println!("\n=== 嵌套路由示例完成 ===");
+  // 演示路由模式匹配
+  println!("\n=== 路由模式匹配演示 ===");
+  let test_url = "/api/v1/users/123?debug=true";
+  match parse_nested_route(test_url) {
+    Ok(route_match) => {
+      println!("成功解析: {test_url}");
+
+      // 演示嵌套匹配
+      match &route_match {
+        AppRouterMatch::Api(api_version) => {
+          println!("这是一个 API 路由");
+          match api_version {
+            ApiVersionRouterMatch::V1(v1_sub) => {
+              println!("API 版本: v1");
+              match v1_sub {
+                ApiV1SubRouterMatch::User(user) => {
+                  println!("资源类型: 用户");
+                  println!("用户 ID: {}", user.id);
+                  if user.query.debug == Some(true) {
+                    println!("调试模式已启用");
+                  }
+                }
+                ApiV1SubRouterMatch::Post(_) => {
+                  println!("资源类型: 文章");
+                }
+              }
+            }
+            ApiVersionRouterMatch::V2(_) => {
+              println!("API 版本: v2");
+            }
+          }
+        }
+        _ => println!("非 API 路由"),
+      }
+    }
+    Err(e) => {
+      println!("解析失败: {e}");
+    }
+  }
 }
 
 #[cfg(test)]
@@ -491,140 +499,82 @@ mod tests {
   use super::*;
 
   #[test]
-  fn test_user_route_with_query() {
-    let url = "/users/123?include=profile&format=json";
-    let (route, query) = parse_full_url::<UserRoute, UserQuery>(url).unwrap();
+  fn test_user_route_parsing() {
+    let url = "/users/123?include_fields=name&format=json";
+    let route_match = parse_nested_route(url).unwrap();
 
-    assert_eq!(route.id, 123);
-    assert_eq!(query.include_fields, vec!["profile"]);
-    assert_eq!(query.format, Some("json".to_string()));
-
-    let reconstructed = build_full_url(&route, &query);
-    assert!(reconstructed.contains("users/123"));
-    assert!(reconstructed.contains("include=profile"));
-    assert!(reconstructed.contains("format=json"));
-  }
-
-  #[test]
-  fn test_post_route_with_query() {
-    let url = "/blog/2024/01/test-post?include_comments=true&comment_page=2";
-    let (route, query) = parse_full_url::<PostRoute, PostQuery>(url).unwrap();
-
-    assert_eq!(route.year, 2024);
-    assert_eq!(route.month, 1);
-    assert_eq!(route.slug, "test-post");
-    assert_eq!(query.include_comments, Some(true));
-    assert_eq!(query.comment_page, Some(2));
+    match route_match {
+      AppRouterMatch::User(user_route) => {
+        assert_eq!(user_route.id, 123);
+        assert_eq!(user_route.query.include_fields, vec!["name"]);
+        assert_eq!(user_route.query.format, Some("json".to_string()));
+      }
+      _ => panic!("Expected User route"),
+    }
   }
 
   #[test]
   fn test_nested_user_post_route() {
-    let url = "/users/456/blog/2024/12/my-post?include_draft=true";
-    let (route, query) = parse_full_url::<UserPostRoute, PostQuery>(url).unwrap();
+    let url = "/users/456/posts/789?include_comments=true";
+    let route_match = parse_nested_route(url).unwrap();
 
-    assert_eq!(route.user_id, 456);
-    assert_eq!(route.year, 2024);
-    assert_eq!(route.month, 12);
-    assert_eq!(route.slug, "my-post");
-    assert_eq!(query.include_draft, Some(true));
+    match route_match {
+      AppRouterMatch::UserSub(UserSubRouterMatch::Post(post_route)) => {
+        assert_eq!(post_route.user_id, 456);
+        assert_eq!(post_route.post_id, 789);
+        assert_eq!(post_route.query.include_comments, Some(true));
+      }
+      _ => panic!("Expected UserSub::Post route"),
+    }
   }
 
   #[test]
-  fn test_api_route_with_query() {
-    let url = "/api/v2?debug=true&format=xml";
-    let (route, query) = parse_full_url::<ApiRoute, ApiQuery>(url).unwrap();
+  fn test_api_v1_user_route() {
+    let url = "/api/v1/users/999?debug=true";
+    let route_match = parse_nested_route(url).unwrap();
 
-    assert_eq!(route.version, "v2");
-    assert_eq!(query.debug, Some(true));
-    assert_eq!(query.format, Some("xml".to_string()));
+    match route_match {
+      AppRouterMatch::Api(ApiVersionRouterMatch::V1(ApiV1SubRouterMatch::User(user_route))) => {
+        assert_eq!(user_route.id, 999);
+        assert_eq!(user_route.query.debug, Some(true));
+      }
+      _ => panic!("Expected API v1 User route"),
+    }
   }
 
   #[test]
-  fn test_api_user_route() {
-    let url = "/api/v1/users/789?include=profile&include=settings";
-    let (route, query) = parse_full_url::<ApiUserRoute, UserQuery>(url).unwrap();
-
-    assert_eq!(route.version, "v1");
-    assert_eq!(route.id, 789);
-    assert_eq!(query.include_fields, vec!["profile", "settings"]);
-  }
-
-  #[test]
-  fn test_complex_nested_route() {
-    let url = "/api/v3/users/100/posts/200/comments/300?version=beta";
-    let (route, query) = parse_full_url::<NestedCommentRoute, ApiQuery>(url).unwrap();
-
-    assert_eq!(route.version, "v3");
-    assert_eq!(route.user_id, 100);
-    assert_eq!(route.post_id, 200);
-    assert_eq!(route.comment_id, 300);
-    assert_eq!(query.version, Some("beta".to_string()));
-  }
-
-  #[test]
-  fn test_route_without_query() {
-    let url = "/users/123";
-    let (route, query) = parse_full_url::<UserRoute, UserQuery>(url).unwrap();
-
-    assert_eq!(route.id, 123);
-    assert_eq!(query, UserQuery::default());
-
-    let reconstructed = build_full_url(&route, &query);
-    assert_eq!(reconstructed, "/users/123");
-  }
-
-  #[test]
-  fn test_manual_route_construction() {
-    let route = ApiUserRoute {
-      version: "v2".to_string(),
-      id: 555,
-    };
-
-    let query = UserQuery {
-      include_fields: vec!["profile".to_string()],
-      include_sensitive: Some(false),
-      format: Some("json".to_string()),
-    };
-
-    let url = build_full_url(&route, &query);
-    assert!(url.contains("/api/v2/users/555"));
-    assert!(url.contains("include=profile"));
-    assert!(url.contains("format=json"));
-
-    // 测试往返转换
-    let (reparsed_route, reparsed_query) = parse_full_url::<ApiUserRoute, UserQuery>(&url).unwrap();
-    assert_eq!(reparsed_route.version, route.version);
-    assert_eq!(reparsed_route.id, route.id);
-    assert_eq!(reparsed_query.include_fields, query.include_fields);
-  }
-
-  #[test]
-  fn test_combined_structures() {
-    let combined = UserRouteWithQuery {
-      route: UserRoute { 
-        id: 777,
-        query: UserQuery {
-          include_fields: vec!["profile".to_string(), "settings".to_string()],
-          include_sensitive: Some(true),
-          format: Some("xml".to_string()),
-        },
-      },
+  fn test_route_formatting() {
+    let user_route = UserRoute {
+      id: 123,
       query: UserQuery {
-        include_fields: vec!["profile".to_string(), "settings".to_string()],
-        include_sensitive: Some(true),
-        format: Some("xml".to_string()),
+        include_fields: vec!["name".to_string()],
+        include_sensitive: None,
+        format: Some("json".to_string()),
       },
     };
+    let route_match = AppRouterMatch::User(user_route);
+    let formatted = route_match.format();
 
-    let url = build_full_url(&combined.route, &combined.query);
-    assert!(url.contains("/users/777"));
-    assert!(url.contains("include=profile"));
-    assert!(url.contains("include=settings"));
-    assert!(url.contains("format=xml"));
+    assert!(formatted.contains("/users/123"));
+    assert!(formatted.contains("include_fields=name"));
+    assert!(formatted.contains("format=json"));
+  }
 
-    // 验证可以重新解析
-    let (route, query) = parse_full_url::<UserRoute, UserQuery>(&url).unwrap();
-    assert_eq!(route.id, combined.route.id);
-    assert_eq!(query.include_fields, combined.query.include_fields);
+  #[test]
+  fn test_route_patterns() {
+    let patterns = AppRouterMatch::patterns();
+
+    assert!(patterns.contains(&"/users/:id"));
+    assert!(patterns.contains(&"/users/:user_id/posts/:post_id"));
+    assert!(patterns.contains(&"/api/v1/users/:id"));
+    assert!(patterns.contains(&"/blog/:year/:month/:slug"));
+  }
+
+  #[test]
+  fn test_invalid_route() {
+    let url = "/invalid/route/path";
+    let result = parse_nested_route(url);
+
+    assert!(result.is_err());
   }
 }

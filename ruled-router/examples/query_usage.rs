@@ -104,14 +104,14 @@ fn main() {
     println!("\n1. 基础搜索查询示例:");
     
     let search_query_str = "q=rust&page=1&limit=10&tags=tutorial&tags=beginner";
-    println!("  查询字符串: {}", search_query_str);
+    println!("  查询字符串: {search_query_str}");
     
     match SearchQuery::parse(search_query_str) {
         Ok(query) => {
-            println!("  解析结果: {:#?}", query);
+            println!("  解析结果: {query:#?}");
             
             let formatted = query.format();
-            println!("  格式化: {}", formatted);
+            println!("  格式化: {formatted}");
             
             // 验证往返转换
             match SearchQuery::parse(&formatted) {
@@ -122,90 +122,90 @@ fn main() {
                         println!("  ✗ 往返转换失败");
                     }
                 }
-                Err(e) => println!("  ✗ 重新解析失败: {:?}", e),
+                Err(e) => println!("  ✗ 重新解析失败: {e:?}"),
             }
         }
-        Err(e) => println!("  解析错误: {:?}", e),
+        Err(e) => println!("  解析错误: {e:?}"),
     }
     
     // 2. 过滤查询示例
     println!("\n2. 过滤查询示例:");
     
     let filter_query_str = "active=true&sort_by=date&order=desc&categories=tech&categories=programming&min_price=10.5&max_price=99.99";
-    println!("  查询字符串: {}", filter_query_str);
+    println!("  查询字符串: {filter_query_str}");
     
     match FilterQuery::parse(filter_query_str) {
         Ok(query) => {
-            println!("  解析结果: {:#?}", query);
+            println!("  解析结果: {query:#?}");
             
             let formatted = query.format();
-            println!("  格式化: {}", formatted);
+            println!("  格式化: {formatted}");
         }
-        Err(e) => println!("  解析错误: {:?}", e),
+        Err(e) => println!("  解析错误: {e:?}"),
     }
     
     // 3. 用户偏好查询示例
     println!("\n3. 用户偏好查询示例:");
     
     let prefs_query_str = "theme=dark&lang=zh-CN&timezone=Asia%2FShanghai&notifications=false";
-    println!("  查询字符串: {}", prefs_query_str);
+    println!("  查询字符串: {prefs_query_str}");
     
     match UserPreferencesQuery::parse(prefs_query_str) {
         Ok(query) => {
-            println!("  解析结果: {:#?}", query);
+            println!("  解析结果: {query:#?}");
             
             let formatted = query.format();
-            println!("  格式化: {}", formatted);
+            println!("  格式化: {formatted}");
         }
-        Err(e) => println!("  解析错误: {:?}", e),
+        Err(e) => println!("  解析错误: {e:?}"),
     }
     
     // 4. 分页查询示例
     println!("\n4. 分页查询示例:");
     
     let pagination_query_str = "page=2&per_page=20";
-    println!("  查询字符串: {}", pagination_query_str);
+    println!("  查询字符串: {pagination_query_str}");
     
     match PaginationQuery::parse(pagination_query_str) {
         Ok(query) => {
-            println!("  解析结果: {:#?}", query);
+            println!("  解析结果: {query:#?}");
             
             let formatted = query.format();
-            println!("  格式化: {}", formatted);
+            println!("  格式化: {formatted}");
         }
-        Err(e) => println!("  解析错误: {:?}", e),
+        Err(e) => println!("  解析错误: {e:?}"),
     }
     
     // 5. 复杂查询示例
     println!("\n5. 复杂查询示例:");
     
     let complex_query_str = "query=advanced%20rust&title=async&author=tokio&page=1&limit=20&min_rating=4.0&max_rating=5.0&year=2023&published=true&featured=false&free=true&tags=async&tags=tokio&tags=performance&categories=tutorial&categories=advanced&authors=alice&authors=bob&sort=popularity&format=pdf&status=published";
-    println!("  查询字符串: {}", complex_query_str);
+    println!("  查询字符串: {complex_query_str}");
     
     match ComplexQuery::parse(complex_query_str) {
         Ok(query) => {
-            println!("  解析结果: {:#?}", query);
+            println!("  解析结果: {query:#?}");
             
             let formatted = query.format();
-            println!("  格式化: {}", formatted);
+            println!("  格式化: {formatted}");
         }
-        Err(e) => println!("  解析错误: {:?}", e),
+        Err(e) => println!("  解析错误: {e:?}"),
     }
     
     // 6. 空查询示例
     println!("\n6. 空查询示例:");
     
     let empty_query_str = "";
-    println!("  查询字符串: '{}'", empty_query_str);
+    println!("  查询字符串: '{empty_query_str}'");
     
     match SearchQuery::parse(empty_query_str) {
         Ok(query) => {
-            println!("  解析结果: {:#?}", query);
+            println!("  解析结果: {query:#?}");
             
             let formatted = query.format();
-            println!("  格式化: '{}'", formatted);
+            println!("  格式化: '{formatted}'");
         }
-        Err(e) => println!("  解析错误: {:?}", e),
+        Err(e) => println!("  解析错误: {e:?}"),
     }
     
     // 7. 错误处理示例
@@ -219,10 +219,10 @@ fn main() {
     ];
     
     for (query_str, description) in error_cases {
-        println!("  测试: {} ({})", query_str, description);
+        println!("  测试: {query_str} ({description})");
         match SearchQuery::parse(query_str) {
-            Ok(query) => println!("    意外成功: {:#?}", query),
-            Err(e) => println!("    预期错误: {:?}", e),
+            Ok(query) => println!("    意外成功: {query:#?}"),
+            Err(e) => println!("    预期错误: {e:?}"),
         }
     }
     
@@ -244,10 +244,10 @@ fn main() {
         ..Default::default()
     };
     
-    println!("  手动构建的查询: {:#?}", manual_query);
+    println!("  手动构建的查询: {manual_query:#?}");
     
     let formatted = manual_query.format();
-    println!("  格式化结果: {}", formatted);
+    println!("  格式化结果: {formatted}");
     
     // 验证可以重新解析
     match ComplexQuery::parse(&formatted) {
@@ -256,11 +256,11 @@ fn main() {
                 println!("  ✓ 手动构建的查询往返转换成功");
             } else {
                 println!("  ✗ 手动构建的查询往返转换失败");
-                println!("    原始: {:#?}", manual_query);
-                println!("    重解析: {:#?}", reparsed);
+                println!("    原始: {manual_query:#?}");
+                println!("    重解析: {reparsed:#?}");
             }
         }
-        Err(e) => println!("  ✗ 重新解析手动构建的查询失败: {:?}", e),
+        Err(e) => println!("  ✗ 重新解析手动构建的查询失败: {e:?}"),
     }
     
     // 9. 性能测试示例

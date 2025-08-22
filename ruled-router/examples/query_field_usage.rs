@@ -41,7 +41,7 @@ fn main() {
     let user_url = "/users/123?include=profile&page=2&limit=10";
     match UserRoute::parse(user_url) {
         Ok(route) => {
-            println!("  Parsed: {:?}", route);
+            println!("  Parsed: {route:?}");
             println!("  User ID: {}", route.id);
             println!("  Include: {:?}", route.query.include_fields);
             println!("  Page: {:?}", route.query.page);
@@ -49,9 +49,9 @@ fn main() {
             
             // 测试往返转换
             let reconstructed = route.format();
-            println!("  Reconstructed: {}", reconstructed);
+            println!("  Reconstructed: {reconstructed}");
         }
-        Err(e) => println!("  Parse error: {:?}", e),
+        Err(e) => println!("  Parse error: {e:?}"),
     }
     
     // 示例 2: 博客评论路由
@@ -60,16 +60,16 @@ fn main() {
     let comments_url = "/api/posts/hello-world/comments?author=john&sort_by=date&order=desc";
     match PostCommentsRoute::parse(comments_url) {
         Ok(route) => {
-            println!("  Parsed: {:?}", route);
+            println!("  Parsed: {route:?}");
             println!("  Post ID: {}", route.post_id);
             println!("  Author filter: {:?}", route.query.author);
             println!("  Sort by: {:?}", route.query.sort_field);
             println!("  Order: {:?}", route.query.order);
             
             let reconstructed = route.format();
-            println!("  Reconstructed: {}", reconstructed);
+            println!("  Reconstructed: {reconstructed}");
         }
-        Err(e) => println!("  Parse error: {:?}", e),
+        Err(e) => println!("  Parse error: {e:?}"),
     }
     
     // 示例 3: 测试部分查询参数
@@ -78,13 +78,13 @@ fn main() {
     let partial_url = "/users/456?page=1";
     match UserRoute::parse(partial_url) {
         Ok(route) => {
-            println!("  Parsed: {:?}", route);
+            println!("  Parsed: {route:?}");
             println!("  Only page specified: {:?}", route.query.page);
             
             let reconstructed = route.format();
-            println!("  Reconstructed: {}", reconstructed);
+            println!("  Reconstructed: {reconstructed}");
         }
-        Err(e) => println!("  Parse error: {:?}", e),
+        Err(e) => println!("  Parse error: {e:?}"),
     }
     
     // 示例 4: 手动构建路由
@@ -100,15 +100,15 @@ fn main() {
     };
     
     let manual_url = manual_route.format();
-    println!("  Manual route: {:?}", manual_route);
-    println!("  Generated URL: {}", manual_url);
+    println!("  Manual route: {manual_route:?}");
+    println!("  Generated URL: {manual_url}");
     
     // 验证往返转换
     match UserRoute::parse(&manual_url) {
         Ok(parsed) => {
             println!("  Round-trip successful: {}", parsed == manual_route);
         }
-        Err(e) => println!("  Round-trip failed: {:?}", e),
+        Err(e) => println!("  Round-trip failed: {e:?}"),
     }
     
     println!("\n=== Tests ===");

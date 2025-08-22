@@ -9,10 +9,12 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields, Lit, Meta};
 mod query;
 mod querystring;
 mod route;
+mod router_match;
 
 use query::expand_query_derive;
 use querystring::expand_querystring_derive;
 use route::expand_route_derive;
+use router_match::expand_router_match_derive;
 
 /// Derive macro for implementing the Router trait
 ///
@@ -74,6 +76,27 @@ pub fn derive_query(input: TokenStream) -> TokenStream {
 pub fn derive_querystring(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
   expand_querystring_derive(input).unwrap_or_else(syn::Error::into_compile_error).into()
+}
+
+/// Derive macro for implementing the RouterMatch trait
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use ruled_router_derive::RouterMatch;
+/// use ruled_router::traits::RouterMatch;
+///
+/// #[derive(RouterMatch)]
+/// enum AppRouterMatch {
+///     User(UserRoute),
+///     Blog(BlogRoute),
+///     Api(ApiRoute),
+/// }
+/// ```
+#[proc_macro_derive(RouterMatch, attributes(route))]
+pub fn derive_router_match(input: TokenStream) -> TokenStream {
+  let input = parse_macro_input!(input as DeriveInput);
+  expand_router_match_derive(input).unwrap_or_else(syn::Error::into_compile_error).into()
 }
 
 /// Extract route configuration from router attribute

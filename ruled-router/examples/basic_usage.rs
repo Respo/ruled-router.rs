@@ -45,6 +45,8 @@ struct SearchRoute;
 
 // 手动实现 Router trait（因为没有路径参数）
 impl Router for SearchRoute {
+  type SubRouterMatch = ::ruled_router::NoSubRouter;
+  
   fn parse(path: &str) -> Result<Self, ParseError> {
     if path == "/search" {
       Ok(SearchRoute)

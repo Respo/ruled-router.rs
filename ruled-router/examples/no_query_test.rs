@@ -12,11 +12,11 @@ fn main() {
     let url = "/users/123";
     match UserRoute::parse(url) {
         Ok(route) => {
-            println!("Parsed route: {:?}", route);
+            println!("Parsed route: {route:?}");
             println!("Formatted: {}", route.format());
         }
         Err(e) => {
-            println!("Parse error: {:?}", e);
+            println!("Parse error: {e:?}");
         }
     }
     
@@ -24,11 +24,11 @@ fn main() {
     let url_with_query = "/users/456?ignored=true";
     match UserRoute::parse(url_with_query) {
         Ok(route) => {
-            println!("Parsed route with ignored query: {:?}", route);
+            println!("Parsed route with ignored query: {route:?}");
             println!("Formatted: {}", route.format());
         }
         Err(e) => {
-            println!("Parse error: {:?}", e);
+            println!("Parse error: {e:?}");
         }
     }
 }
