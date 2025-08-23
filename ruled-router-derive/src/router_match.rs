@@ -43,6 +43,17 @@ fn extract_route_prefix(variant: &Variant) -> syn::Result<Option<String>> {
         attr,
         "route_prefix must be a string literal in the format #[route_prefix = \"value\"]",
       ));
+    } else if attr.path().is_ident("route") {
+      // 解析 #[route("value")] 语法
+      if let syn::Meta::List(meta_list) = &attr.meta {
+        if let Ok(lit_str) = meta_list.parse_args::<syn::LitStr>() {
+          return Ok(Some(lit_str.value()));
+        }
+      }
+      return Err(syn::Error::new_spanned(
+        attr,
+        "route must be a string literal in the format #[route(\"value\")]",
+      ));
     }
   }
   Ok(None)
@@ -59,10 +70,12 @@ fn generate_try_parse_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
     let route_prefix = extract_route_prefix(variant)?;
 
     let match_arm = if let Some(prefix) = route_prefix {
-      // 如果有 route_prefix 属性，先检查前缀匹配
+      // 如果有 route_prefix 或 route 属性，先检查前缀匹配，然后解析
       quote! {
         if path.starts_with(#prefix) {
-          return Ok(Self::#variant_name(#route_type {}));
+          if let Ok(route) = <#route_type as ::ruled_router::traits::Router>::parse(path) {
+            return Ok(Self::#variant_name(route));
+          }
         }
       }
     } else {
@@ -132,24 +145,72 @@ fn generate_patterns_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
   })
 }
 
+/// 提取 enum 级别的 route_prefix 属性
+fn extract_enum_route_prefix(input: &DeriveInput) -> syn::Result<Option<String>> {
+  for attr in &input.attrs {
+    if attr.path().is_ident("route_prefix") {
+      if let Ok(lit_str) = attr.parse_args::<syn::LitStr>() {
+        return Ok(Some(lit_str.value()));
+      }
+    }
+  }
+  Ok(None)
+}
+
 /// 生成 try_parse_with_remaining 方法的实现
-fn generate_try_parse_with_remaining_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
+fn generate_try_parse_with_remaining_impl(input: &DeriveInput, variants: &[&Variant]) -> syn::Result<TokenStream> {
+  let enum_route_prefix = extract_enum_route_prefix(input)?;
   let mut match_arms = Vec::new();
 
   for variant in variants {
     let variant_name = &variant.ident;
     let route_type = extract_route_type(variant)?;
+    let route_prefix = extract_route_prefix(variant)?;
 
-    let match_arm = quote! {
-      if let Ok((route, remaining)) = <#route_type as ::ruled_router::traits::Router>::parse_with_sub(path) {
-        let consumed = path.len() - remaining.map_or(0, |_| 0);
-        let remaining_path = if consumed < path.len() {
-          &path[consumed..]
-        } else {
-          ""
-        };
-        return Ok((Self::#variant_name(route), remaining_path));
+    let match_arm = if let Some(prefix) = route_prefix {
+      if let Some(enum_prefix) = &enum_route_prefix {
+        // 有 enum 级别的 route_prefix，先检查 enum_prefix，然后用剩余路径解析子路由
+        quote! {
+          if path.starts_with(#enum_prefix) && path.len() > #enum_prefix.len() {
+            let remaining_after_enum_prefix = &path[#enum_prefix.len()..];
+
+            // 直接尝试用子路由的模式来解析剩余路径
+            let parser = ::ruled_router::parser::PathParser::new(<#route_type as ::ruled_router::traits::Router>::pattern())?;
+            if let Ok(consumed) = parser.consumed_length(remaining_after_enum_prefix) {
+              let route_path = &remaining_after_enum_prefix[..consumed];
+              let final_remaining_path = &remaining_after_enum_prefix[consumed..];
+
+              // 尝试解析匹配的路径部分
+              if let Ok((route, _)) = <#route_type as ::ruled_router::traits::Router>::parse_with_sub(route_path) {
+                return Ok((Self::#variant_name(route), final_remaining_path));
+              }
+            }
+          }
+        }
+      } else {
+        // 没有 enum 级别的 route_prefix，variant 的 route 属性就是完整路径
+        quote! {
+          if path.starts_with(#prefix) {
+            // 计算路由 pattern 应该消耗的路径长度
+            let parser = ::ruled_router::parser::PathParser::new(<#route_type as ::ruled_router::traits::Router>::pattern())?;
+            if let Ok(consumed) = parser.consumed_length(path) {
+              let route_path = &path[..consumed];
+              let remaining_path = &path[consumed..];
+
+              // 尝试解析匹配的路径部分
+              if let Ok((route, _)) = <#route_type as ::ruled_router::traits::Router>::parse_with_sub(route_path) {
+                return Ok((Self::#variant_name(route), remaining_path));
+              }
+            }
+          }
+        }
       }
+    } else {
+      // 没有 route_prefix 或 route 属性，这种情况不应该存在于 RouterMatch 中
+      return Err(syn::Error::new_spanned(
+        variant,
+        "RouterMatch variants must have either #[route_prefix] or #[route] attribute",
+      ));
     };
     match_arms.push(match_arm);
   }
@@ -177,7 +238,7 @@ pub fn expand_router_match_derive(input: DeriveInput) -> syn::Result<TokenStream
   let try_parse_impl = generate_try_parse_impl(&variants)?;
   let format_impl = generate_format_impl(&variants);
   let patterns_impl = generate_patterns_impl(&variants)?;
-  let try_parse_with_remaining_impl = generate_try_parse_with_remaining_impl(&variants)?;
+  let try_parse_with_remaining_impl = generate_try_parse_with_remaining_impl(&input, &variants)?;
 
   let expanded = quote! {
     impl ::ruled_router::traits::RouteMatcher for #name {

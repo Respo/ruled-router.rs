@@ -16,6 +16,12 @@ use querystring::expand_querystring_derive;
 use route::expand_route_derive;
 use router_match::expand_router_match_derive;
 
+/// sub_router attribute macro
+#[proc_macro_attribute]
+pub fn sub_router(_args: TokenStream, input: TokenStream) -> TokenStream {
+  input
+}
+
 /// Derive macro for implementing the Router trait
 ///
 /// # Example
@@ -30,7 +36,7 @@ use router_match::expand_router_match_derive;
 ///     id: u32,
 /// }
 /// ```
-#[proc_macro_derive(Router, attributes(router, query))]
+#[proc_macro_derive(Router, attributes(router, query, sub_router))]
 pub fn derive_router(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
   expand_route_derive(input).unwrap_or_else(syn::Error::into_compile_error).into()

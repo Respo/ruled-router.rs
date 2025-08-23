@@ -26,7 +26,7 @@ fn extract_path_params(pattern: &str) -> Vec<String> {
 
 /// 分离路径字段和查询字段
 /// 提取字段信息（包括属性）
-fn extract_route_fields(data: &Data) -> syn::Result<Vec<(syn::Ident, Type, bool)>> {
+fn extract_route_fields(data: &Data) -> syn::Result<Vec<(syn::Ident, Type, bool, bool)>> {
   match data {
     Data::Struct(data_struct) => match &data_struct.fields {
       Fields::Named(fields_named) => {
@@ -34,7 +34,8 @@ fn extract_route_fields(data: &Data) -> syn::Result<Vec<(syn::Ident, Type, bool)
         for field in &fields_named.named {
           if let Some(ident) = &field.ident {
             let is_query = has_query_attribute(field);
-            field_info.push((ident.clone(), field.ty.clone(), is_query));
+            let is_sub_router = has_sub_router_attribute(field);
+            field_info.push((ident.clone(), field.ty.clone(), is_query, is_sub_router));
           }
         }
         Ok(field_info)
@@ -55,15 +56,25 @@ fn has_query_attribute(field: &syn::Field) -> bool {
   false
 }
 
+/// 检查字段是否有 #[sub_router] 属性
+fn has_sub_router_attribute(field: &syn::Field) -> bool {
+  for attr in &field.attrs {
+    if attr.path().is_ident("sub_router") {
+      return true;
+    }
+  }
+  false
+}
+
 // Define type aliases to improve readability and reduce complexity
-type RouteField = (syn::Ident, Type, bool);
+type RouteField = (syn::Ident, Type, bool, bool);
 type ParsedField = (syn::Ident, Type);
 
 fn separate_fields(fields: &[RouteField], param_names: &[String]) -> (Vec<ParsedField>, Vec<ParsedField>) {
   let mut path_fields = Vec::new();
   let mut query_fields = Vec::new();
 
-  for (field_name, field_type, is_query) in fields {
+  for (field_name, field_type, is_query, is_sub_router) in fields {
     let field_name_str = field_name.to_string();
 
     if *is_query {
@@ -72,6 +83,8 @@ fn separate_fields(fields: &[RouteField], param_names: &[String]) -> (Vec<Parsed
     } else if param_names.contains(&field_name_str) {
       // 这是路径参数
       path_fields.push((field_name.clone(), field_type.clone()));
+    } else if *is_sub_router {
+      // 忽略子路由字段，它们由 RouterMatch trait 处理
     }
     // 忽略其他字段
   }
@@ -149,6 +162,40 @@ fn generate_format_query_logic(fields: &[(syn::Ident, Type)]) -> TokenStream {
   }
 }
 
+/// 查找子路由字段的类型
+fn find_sub_router_type(struct_name: &syn::Ident) -> TokenStream {
+  let struct_name_str = struct_name.to_string();
+
+  // 根据结构体名称推断对应的 RouterMatch 类型
+  let sub_router_match_name = if struct_name_str.ends_with("CategoryRoute") {
+    let prefix = struct_name_str.strip_suffix("CategoryRoute").unwrap();
+    format!("{prefix}DetailRouterMatch")
+  } else if struct_name_str == "UserModuleRoute" {
+    "UserSubRouterMatch".to_string()
+  } else if struct_name_str == "ShopModuleRoute" {
+    "ShopSubRouterMatch".to_string()
+  } else if struct_name_str == "AdminModuleRoute" {
+    "AdminSubRouterMatch".to_string()
+  } else {
+    return quote! { ::ruled_router::traits::NoSubRouter };
+  };
+
+  let sub_router_ident = syn::Ident::new(&sub_router_match_name, struct_name.span());
+  quote! { #sub_router_ident }
+}
+
+/// 生成子路由字段的解析代码
+fn generate_parse_sub_router_field(fields: &[RouteField]) -> TokenStream {
+  for (field_name, _, _, is_sub_router) in fields {
+    if *is_sub_router {
+      return quote! {
+        #field_name: None,
+      };
+    }
+  }
+  quote! {}
+}
+
 /// Expand the Router derive macro
 pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
   let struct_name = &input.ident;
@@ -161,9 +208,13 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
   // 分离路径字段和查询字段
   let (path_fields, query_fields) = separate_fields(&fields, &param_names);
 
+  // 查找子路由字段
+  let sub_router_type = find_sub_router_type(struct_name);
+
   // 生成解析逻辑
   let parse_path_fields = generate_parse_path_fields(&path_fields, &param_names)?;
   let parse_query_fields = generate_parse_query_fields(&query_fields);
+  let parse_sub_router_field = generate_parse_sub_router_field(&fields);
 
   // 生成格式化逻辑
   let format_path_fields = generate_format_path_fields(&path_fields);
@@ -171,7 +222,7 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
 
   let expanded = quote! {
       impl ::ruled_router::traits::Router for #struct_name {
-          type SubRouterMatch = ::ruled_router::traits::NoSubRouter;
+          type SubRouterMatch = #sub_router_type;
 
           fn parse(path: &str) -> Result<Self, ::ruled_router::error::ParseError> {
               let (path_part, query_part) = ::ruled_router::utils::split_path_query(path);
@@ -188,7 +239,38 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
               Ok(Self {
                   #(#parse_path_fields,)*
                   #(#parse_query_fields,)*
+                  #parse_sub_router_field
               })
+          }
+
+          fn parse_with_sub(path: &str) -> Result<(Self, Option<Self::SubRouterMatch>), ::ruled_router::error::ParseError> {
+              let (path_part, query_part) = ::ruled_router::utils::split_path_query(path);
+              let parser = ::ruled_router::parser::PathParser::new(#pattern)?;
+              let consumed = parser.consumed_length(path_part)?;
+              let params = parser.match_path(path_part)?;
+
+              // 解析查询参数
+              let query_map = if let Some(query_str) = query_part {
+                  ::ruled_router::utils::parse_query_string(query_str)?
+              } else {
+                  ::std::collections::HashMap::new()
+              };
+
+              let router = Self {
+                  #(#parse_path_fields,)*
+                  #(#parse_query_fields,)*
+                  #parse_sub_router_field
+              };
+
+              // 尝试解析子路由
+              let remaining_path = &path[consumed..];
+              let sub_router = if !remaining_path.is_empty() {
+                  Self::SubRouterMatch::try_parse(remaining_path).ok()
+              } else {
+                  None
+              };
+
+              Ok((router, sub_router))
           }
 
           fn format(&self) -> String {
