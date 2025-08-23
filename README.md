@@ -2,6 +2,8 @@
 
 一个基于面向数据编程的 Rust 路由解析库，通过自动前缀提取实现零重复的类型安全路由系统。
 
+A data-oriented Rust routing library that implements zero-duplication type-safe routing through automatic prefix extraction.
+
 ## 项目概述
 
 **Ruled Router** 采用面向数据编程范式，让你通过定义数据结构来声明路由，所有解析和格式化逻辑由宏自动生成。核心特性：
@@ -22,6 +24,10 @@
 - `ruled-router` - 主库，包含核心 trait 和实现
 - `ruled-router-derive` - 过程宏库，提供 `#[derive(Router)]` 和 `#[derive(Query)]` 宏
 
+### 开发说明
+
+> **注意**：本库的大部分代码由 Claude Sonnet AI 生成，如果考虑使用, 请先贡献测试用例。
+
 ## 快速开始
 
 在您的 `Cargo.toml` 中添加依赖：
@@ -33,20 +39,22 @@ ruled-router = "0.1.0"
 
 ### 基本用法：单层路由
 
+查看完整示例：[examples/basic_usage.rs](ruled-router/examples/basic_usage.rs)
+
 ```rust
 use ruled_router::prelude::*;
 
-// 定义路由结构体
-#[derive(Router)]
-#[router(pattern = "/users/:id")]  // 只需定义一次路径模式
+// Define route structure
+#[derive(Router, Debug)]
+#[router(pattern = "/users/:id")]  // Define path pattern only once
 struct UserRoute {
     id: u32,
     #[query]
     query: UserQuery,
 }
 
-// 定义查询参数
-#[derive(Query)]
+// Define query parameters
+#[derive(Query, Debug)]
 struct UserQuery {
     #[query(name = "tab")]
     tab: Option<String>,
@@ -55,54 +63,56 @@ struct UserQuery {
 }
 
 fn main() {
-    // 解析路由
+    // Parse route
     let path = "/users/123?tab=profile&page=2";
     let route = UserRoute::parse(path).unwrap();
-    
+
     println!("用户ID: {}", route.id);
     println!("标签页: {:?}", route.query.tab);
     println!("页码: {}", route.query.page);
-    
-    // 格式化路由
+
+    // Format route
     let formatted = route.format();
     println!("格式化结果: {}", formatted);
-    // 输出: /users/123?tab=profile&page=2
+    // Output: /users/123?tab=profile&page=2
 }
 ```
 
 ### 自动前缀提取：路由匹配器
 
+查看完整示例：[examples/auto_prefix_extraction.rs](ruled-router/examples/auto_prefix_extraction.rs)
+
 ```rust
 use ruled_router::prelude::*;
 
-// 路由匹配器 - 自动前缀提取，无需重复定义路径
-#[derive(RouterMatch)]
+// Route matcher - automatic prefix extraction, no need to repeat path definitions
+#[derive(RouterMatch, Debug)]
 enum AppRouterMatch {
-    User(UserRoute),    // 自动提取前缀: "/users"
-    Blog(BlogRoute),    // 自动提取前缀: "/blog"
-    Api(ApiRoute),      // 自动提取前缀: "/api"
+    User(UserRoute),    // Auto-extracted prefix: "/users"
+    Blog(BlogRoute),    // Auto-extracted prefix: "/blog"
+    Api(ApiRoute),      // Auto-extracted prefix: "/api"
 }
 
-#[derive(Router)]
+#[derive(Router, Debug)]
 #[router(pattern = "/users/:id")]
 struct UserRoute { id: u32 }
 
-#[derive(Router)]
+#[derive(Router, Debug)]
 #[router(pattern = "/blog/:slug")]
 struct BlogRoute { slug: String }
 
-#[derive(Router)]
+#[derive(Router, Debug)]
 #[router(pattern = "/api/v1")]
 struct ApiRoute;
 
 fn main() {
-    // 自动路由匹配
+    // Automatic route matching
     let paths = [
         "/users/123",
-        "/blog/hello-world", 
+        "/blog/hello-world",
         "/api/v1"
     ];
-    
+
     for path in paths {
         match AppRouterMatch::try_parse(path) {
             Ok(route) => println!("匹配成功: {} -> {:?}", path, route),
@@ -114,100 +124,128 @@ fn main() {
 
 ### 递归嵌套路由：无限深度支持
 
+查看完整示例：[examples/nested_routing.rs](ruled-router/examples/nested_routing.rs)
+
 ```rust
 use ruled_router::prelude::*;
 
-// 三层嵌套路由示例
-#[derive(RouterMatch)]
+// Three-level nested routing example
+#[derive(RouterMatch, Debug)]
 enum AppRouterMatch {
-    User(ModuleRoute),   // 自动提取: "/user"
-    Shop(ModuleRoute),   // 自动提取: "/shop"
-    Admin(ModuleRoute),  // 自动提取: "/admin"
+    User(UserModuleRoute),   // Auto-extracted: "/users"
+    Shop(ShopModuleRoute),   // Auto-extracted: "/shop"
+    Admin(AdminModuleRoute), // Auto-extracted: "/admin"
 }
 
-#[derive(Router)]
-#[router(pattern = "/:module")]  // 动态模块路由
-struct ModuleRoute {
-    module: String,
-    #[sub_router]
-    sub_router: Option<SubRouterMatch>,
-}
-
-#[derive(RouterMatch)]
-enum SubRouterMatch {
-    Category(CategoryRoute),  // 自动提取: "/category"
-    Settings(SettingsRoute), // 自动提取: "/settings"
-}
-
-#[derive(Router)]
-#[router(pattern = "/category/:category_id")]
-struct CategoryRoute {
-    category_id: u32,
+// First level: Module routes
+#[derive(Router, Debug)]
+#[router(pattern = "/users")]
+struct UserModuleRoute {
     #[query]
-    query: CategoryQuery,
+    query: SimpleQuery,
     #[sub_router]
-    sub_router: Option<DetailRouterMatch>,  // 支持更深层嵌套
+    sub_router: Option<UserSubRouterMatch>,
 }
 
-#[derive(RouterMatch)]
-enum DetailRouterMatch {
-    Item(ItemDetailRoute),     // 自动提取: "/item"
-    Review(ReviewDetailRoute), // 自动提取: "/review"
-}
-
-#[derive(Router)]
-#[router(pattern = "/item/:item_id")]
-struct ItemDetailRoute {
-    item_id: u32,
+#[derive(Router, Debug)]
+#[router(pattern = "/shop")]
+struct ShopModuleRoute {
     #[query]
-    query: ItemQuery,
+    query: SimpleQuery,
+    #[sub_router]
+    sub_router: Option<ShopSubRouterMatch>,
 }
 
-#[derive(Query)]
-struct CategoryQuery {
-    #[query(name = "page", default = "1")]
-    page: u32,
-    #[query(name = "limit", default = "10")]
-    limit: u32,
+// Second level: Sub-route matchers
+#[derive(RouterMatch, Debug)]
+enum UserSubRouterMatch {
+    Profile(UserProfileCategoryRoute), // Auto-extracted: "/profile"
+    Content(UserContentCategoryRoute), // Auto-extracted: "/content"
 }
 
-#[derive(Query)]
-struct ItemQuery {
+#[derive(RouterMatch, Debug)]
+enum ShopSubRouterMatch {
+    Products(ShopProductCategoryRoute), // Auto-extracted: "/products"
+    Orders(ShopOrderCategoryRoute),     // Auto-extracted: "/orders"
+}
+
+// Third level: Category routes
+#[derive(Router, Debug)]
+#[router(pattern = "/profile")]
+struct UserProfileCategoryRoute {
+    #[query]
+    query: SimpleQuery,
+    #[sub_router]
+    sub_router: Option<UserProfileDetailRouterMatch>,
+}
+
+#[derive(Router, Debug)]
+#[router(pattern = "/products")]
+struct ShopProductCategoryRoute {
+    #[query]
+    query: SimpleQuery,
+    #[sub_router]
+    sub_router: Option<ShopProductDetailRouterMatch>,
+}
+
+// Fourth level: Detail route matchers
+#[derive(RouterMatch, Debug)]
+enum UserProfileDetailRouterMatch {
+    BasicInfo(UserBasicInfoRoute), // Auto-extracted: "/basic"
+    Settings(UserSettingsRoute),   // Auto-extracted: "/settings"
+}
+
+#[derive(RouterMatch, Debug)]
+enum ShopProductDetailRouterMatch {
+    Detail(ProductDetailRoute), // Auto-extracted: "/detail"
+    List(ProductListRoute),     // Auto-extracted: "/list"
+}
+
+// Final level: Concrete routes
+#[derive(Router, Debug)]
+#[router(pattern = "/basic/:id")]
+struct UserBasicInfoRoute {
+    id: u32,
+    #[query]
+    query: SimpleQuery,
+}
+
+#[derive(Router, Debug)]
+#[router(pattern = "/detail/:category/:id")]
+struct ProductDetailRoute {
+    category: String,
+    id: u32,
+    #[query]
+    query: SimpleQuery,
+}
+
+#[derive(Query, Debug)]
+struct SimpleQuery {
     #[query(name = "format")]
     format: Option<String>,
-    #[query(name = "include", multiple)]
-    include: Vec<String>,
 }
 
 fn main() {
-    // 解析三层嵌套路由
-    let path = "/user/category/123/item/456?format=json&include=details&include=reviews";
-    
+    // Parse multi-level nested route
+    let path = "/users/profile/basic/123?format=json";
+
     if let Ok(route) = AppRouterMatch::try_parse(path) {
         match route {
-            AppRouterMatch::User(module_route) => {
-                println!("模块: {}", module_route.module);
-                
-                if let Some(SubRouterMatch::Category(category_route)) = &module_route.sub_router {
-                    println!("分类ID: {}", category_route.category_id);
-                    
-                    if let Some(DetailRouterMatch::Item(item_route)) = &category_route.sub_router {
-                        println!("商品ID: {}", item_route.item_id);
-                        println!("格式: {:?}", item_route.query.format);
-                        println!("包含: {:?}", item_route.query.include);
+            AppRouterMatch::User(user_route) => {
+                if let Some(UserSubRouterMatch::Profile(profile_route)) = &user_route.sub_router {
+                    if let Some(UserProfileDetailRouterMatch::BasicInfo(basic_route)) = &profile_route.sub_router {
+                        println!("用户ID: {}", basic_route.id);
+                        println!("格式: {:?}", basic_route.query.format);
                     }
                 }
             }
             _ => {}
         }
     }
-    
-    // 输出:
-    // 模块: user
-    // 分类ID: 123
-    // 商品ID: 456
+
+    // Output:
+    // 用户ID: 123
     // 格式: Some("json")
-    // 包含: ["details", "reviews"]
 }
 ```
 
@@ -243,35 +281,37 @@ struct UserRoute { id: u32 }
 // ❌ 传统方式 - 路径重复定义
 #[derive(RouterMatch)]
 enum AppRouterMatch {
-    #[route("/users")]     // 重复定义
+    #[route("/users")]     // Duplicate definition
     User(UserRoute),
 }
 
 #[derive(Router)]
-#[router(pattern = "/users/:id")]  // 重复定义
+#[router(pattern = "/users/:id")]  // Duplicate definition
 struct UserRoute { id: u32 }
 ```
 
 **Ruled Router** 通过自动前缀提取实现 DRY 原则：
 
 ```rust
-// ✅ 自动前缀提取 - 路径只定义一次
+// ✅ Automatic prefix extraction - path defined only once
 #[derive(RouterMatch)]
 enum AppRouterMatch {
-    User(UserRoute),  // 自动从 UserRoute::pattern() 提取前缀
+    User(UserRoute),  // Auto-extracted from UserRoute::pattern()
 }
 
 #[derive(Router)]
-#[router(pattern = "/users/:id")]  // 只在这里定义一次
+#[router(pattern = "/users/:id")]  // Defined only once here
 struct UserRoute { id: u32 }
 ```
 
 ### 宏驱动的代码生成
+
 - 参考 `argh` 的实现方式，使用过程宏自动生成解析和格式化逻辑
 - 通过属性宏标注结构体字段，定义路由段的解析规则
 - 编译时生成高效的解析器代码，运行时零成本抽象
 
 ### 结构化路由定义
+
 - 使用 Rust 结构体定义路由结构
 - 支持嵌套结构体组合复杂路由路径
 - 类型安全的路由参数处理
@@ -279,30 +319,35 @@ struct UserRoute { id: u32 }
 ## 功能特性
 
 ### 🎯 面向数据编程
+
 - **数据即代码**：通过数据结构定义路由，逻辑自动生成
 - **零重复定义**：自动前缀提取，路径信息只需定义一次
 - **组合式设计**：通过结构体和枚举组合实现复杂路由
 - **声明式语法**：无需手写解析代码，专注业务逻辑
 
 ### 🔄 自动前缀提取
+
 - **DRY 原则**：RouterMatch 自动从 Router 类型提取路由前缀
 - **零维护成本**：路径变更只需修改一处，逻辑自动更新
 - **类型安全**：编译时验证路由前缀的一致性
 - **手动覆盖**：支持 `#[route]` 属性手动指定前缀（可选）
 
 ### 🌳 递归嵌套路由
+
 - **无限深度**：支持任意层级的路由嵌套
 - **独立子路由**：每层可有独立的 `#[sub_router]` 字段
 - **参数传递**：父路由参数自动传递给子路由
 - **模块化设计**：每个路由层级可独立开发和测试
 
 ### 🔒 类型安全解析
+
 - **编译时检查**：路径参数和查询参数类型在编译时验证
 - **自动类型转换**：支持 `u32`、`String`、`bool` 等常见类型
 - **自定义类型**：通过 `FromParam` 和 `ToParam` trait 支持自定义类型
 - **错误处理**：详细的解析错误信息
 
 ### 📝 查询参数处理
+
 - **多种数据类型**：字符串、数字、布尔值、枚举等
 - **数组参数**：支持 `?tags=rust&tags=web` 形式的多值参数
 - **可选参数**：`Option<T>` 类型支持可选查询参数
@@ -310,6 +355,7 @@ struct UserRoute { id: u32 }
 - **自定义参数名**：`#[query(name = "custom_name")]` 映射参数名
 
 ### ⚡ 高性能设计
+
 - **零运行时开销**：所有解析逻辑在编译时生成
 - **零分配解析**：避免不必要的内存分配
 - **编译时优化**：编译器可进行深度优化
@@ -334,7 +380,7 @@ ruled-router = "0.1.0"
 - **RouterMatch**：路由匹配器枚举，负责路由分发和前缀匹配
 
 ```rust
-// Router - 具体路由
+// Router - concrete route
 #[derive(Router)]
 #[router(pattern = "/users/:id")]
 struct UserRoute {
@@ -343,11 +389,11 @@ struct UserRoute {
     query: UserQuery,
 }
 
-// RouterMatch - 路由匹配器
+// RouterMatch - route matcher
 #[derive(RouterMatch)]
 enum AppRouterMatch {
-    User(UserRoute),    // 自动提取前缀: "/users"
-    Blog(BlogRoute),    // 自动提取前缀: "/blog"
+    User(UserRoute),    // Auto-extracted prefix: "/users"
+    Blog(BlogRoute),    // Auto-extracted prefix: "/blog"
 }
 ```
 
@@ -364,61 +410,78 @@ enum AppRouterMatch {
 
 #### 1. 模块化路由设计
 
+查看完整示例：[examples/modular_routes.rs](ruled-router/examples/modular_routes.rs)
+
 ```rust
-// 按功能模块组织路由
-mod user {
-    use super::*;
-    
-    #[derive(RouterMatch)]
-    pub enum UserRouterMatch {
-        Profile(UserProfileRoute),
-        Settings(UserSettingsRoute),
-        Posts(UserPostsRoute),
-    }
-    
-    #[derive(Router)]
-    #[router(pattern = "/profile/:id")]
-    pub struct UserProfileRoute {
-        pub id: u32,
-        #[query]
-        pub query: ProfileQuery,
-    }
+// User module routes
+#[derive(Router, Debug)]
+#[router(pattern = "/users")]
+struct UserModuleRoute {
+    #[sub_router]
+    sub_router: Option<UserSubRouterMatch>,
 }
 
-mod blog {
-    // 博客相关路由...
+#[derive(RouterMatch, Debug)]
+enum UserSubRouterMatch {
+    Profile(UserProfileRoute),
+    Settings(UserSettingsRoute),
 }
 
-// 顶层路由聚合
-#[derive(RouterMatch)]
+#[derive(Router, Debug)]
+#[router(pattern = "/profile/:id")]
+struct UserProfileRoute {
+    id: u32,
+}
+
+#[derive(Router, Debug)]
+#[router(pattern = "/settings")]
+struct UserSettingsRoute;
+
+// Blog module routes
+#[derive(Router, Debug)]
+#[router(pattern = "/blog")]
+struct BlogModuleRoute {
+    #[sub_router]
+    sub_router: Option<BlogSubRouterMatch>,
+}
+
+#[derive(RouterMatch, Debug)]
+enum BlogSubRouterMatch {
+    Post(BlogPostRoute),
+}
+
+#[derive(Router, Debug)]
+#[router(pattern = "/post/:slug")]
+struct BlogPostRoute {
+    slug: String,
+}
+
+// Top-level route aggregation
+#[derive(RouterMatch, Debug)]
 enum AppRouterMatch {
-    User(user::UserRouterMatch),
-    Blog(blog::BlogRouterMatch),
+    User(UserModuleRoute),
+    Blog(BlogModuleRoute),
 }
 ```
 
 #### 2. 查询参数设计
 
+查看完整示例：[examples/query_params.rs](ruled-router/examples/query_params.rs)
+
 ```rust
-#[derive(Query)]
+#[derive(Query, Debug)]
 struct ListQuery {
     #[query(name = "page", default = "1")]
     page: u32,
-    
+
     #[query(name = "limit", default = "20")]
     limit: u32,
-    
+
     #[query(name = "sort")]
-    sort: Option<SortOrder>,
-    
+    sort: Option<String>,
+
     #[query(name = "filter", multiple)]
     filters: Vec<String>,
-}
-
-#[derive(FromParam, ToParam)]
-enum SortOrder {
-    Asc,
-    Desc,
 }
 ```
 
@@ -430,7 +493,7 @@ use ruled_router::ParseError;
 fn handle_route(path: &str) {
     match AppRouterMatch::try_parse(path) {
         Ok(route) => {
-            // 处理成功解析的路由
+            // Handle successfully parsed route
             println!("路由解析成功: {:?}", route);
         }
         Err(ParseError::InvalidPath(msg)) => {
@@ -460,6 +523,7 @@ fn handle_route(path: &str) {
 ### 宏系统设计
 
 #### 1. 主要宏
+
 - `#[derive(Router)]`: 为结构体生成路由解析器
 - `#[derive(RouterMatch)]`: 为枚举生成路由匹配器
 - `#[derive(Query)]`: 为结构体生成查询参数解析器
@@ -468,6 +532,7 @@ fn handle_route(path: &str) {
 - `#[sub_router]`: 标记子路由字段
 
 #### 2. 生成的 Trait
+
 ```rust
 trait Router: Sized {
     fn parse(path: &str) -> Result<Self, ParseError>;
@@ -489,17 +554,20 @@ trait Query: Sized {
 ### 解析器架构
 
 #### 1. 路径分段器
+
 - 将 URL 路径分解为段
 - 处理 URL 编码/解码
 - 参数提取和验证
 - 自动前缀提取和匹配
 
 #### 2. 类型转换器
+
 - 字符串到各种类型的转换
 - 自定义类型转换支持（FromParam/ToParam）
 - 错误处理和回退机制
 
 #### 3. 路由匹配器
+
 - 基于前缀的快速匹配算法
 - 嵌套路由递归解析
 - 优先级处理和冲突检测
@@ -522,19 +590,33 @@ trait Query: Sized {
 
 查看 `examples/` 目录中的完整示例：
 
-- `basic_usage.rs` - 基本路由解析和格式化
-- `nested_router_usage.rs` - 三层嵌套路由示例
-- `query_params.rs` - 复杂查询参数处理
-- `custom_types.rs` - 自定义类型支持
+- [`basic_usage.rs`](ruled-router/examples/basic_usage.rs) - 基本路由解析和格式化
+- [`auto_prefix_extraction.rs`](ruled-router/examples/auto_prefix_extraction.rs) - 自动前缀提取示例
+- [`nested_routing.rs`](ruled-router/examples/nested_routing.rs) - 嵌套路由示例
+- [`nested_router_usage.rs`](ruled-router/examples/nested_router_usage.rs) - 三层嵌套路由示例
+- [`query_params.rs`](ruled-router/examples/query_params.rs) - 查询参数处理
+- [`modular_routes.rs`](ruled-router/examples/modular_routes.rs) - 模块化路由设计
 
 运行示例：
 
 ```bash
-# 运行嵌套路由示例
-cargo run --example nested_router_usage
-
-# 运行基本用法示例
+# Run basic usage example
 cargo run --example basic_usage
+
+# Run auto prefix extraction example
+cargo run --example auto_prefix_extraction
+
+# Run nested routing example
+cargo run --example nested_routing
+
+# Run query params example
+cargo run --example query_params
+
+# Run modular routes example
+cargo run --example modular_routes
+
+# Run advanced nested routing example
+cargo run --example nested_router_usage
 ```
 
 ## 测试
@@ -542,14 +624,14 @@ cargo run --example basic_usage
 运行测试套件：
 
 ```bash
-# 运行所有测试
+# Run all tests
 cargo test
 
-# 运行特定测试
+# Run specific tests
 cargo test router_derive_tests
 cargo test query_derive_tests
 
-# 运行性能测试
+# Run performance tests
 cargo test --release performance_tests
 ```
 
@@ -568,20 +650,20 @@ cargo test --release performance_tests
 ### 开发环境
 
 ```bash
-# 克隆仓库
+# Clone repository
 git clone https://github.com/your-username/ruled-router.rs.git
 cd ruled-router.rs
 
-# 安装依赖
+# Install dependencies
 cargo build
 
-# 运行测试
+# Run tests
 cargo test
 
-# 检查代码格式
+# Check code format
 cargo fmt --check
 
-# 运行 clippy
+# Run clippy
 cargo clippy -- -D warnings
 ```
 
