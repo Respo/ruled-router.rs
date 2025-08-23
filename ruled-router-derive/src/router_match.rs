@@ -73,14 +73,50 @@ fn generate_try_parse_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
       // 如果有 route_prefix 或 route 属性，先检查前缀匹配，然后解析
       quote! {
         if path.starts_with(#prefix) {
-          if let Ok(route) = <#route_type as ::ruled_router::traits::Router>::parse(path) {
-            return Ok(Self::#variant_name(route));
+          // 分离路径和查询参数
+          let (path_part, query_part) = ::ruled_router::utils::split_path_query(path);
+
+          if path_part.starts_with(#prefix) {
+            // 构造完整的路径用于解析（前缀 + 查询参数）
+            let full_path = if let Some(query) = query_part {
+              format!("{}?{}", #prefix, query)
+            } else {
+              #prefix.to_string()
+            };
+
+            // 尝试使用 parse_with_sub 进行递归解析
+            if let Ok((route, sub_router)) = <#route_type as ::ruled_router::traits::Router>::parse_with_sub(path) {
+              // 如果有子路由，尝试创建包含子路由的路由实例
+              if let Some(_sub) = sub_router {
+                // 对于有子路由的情况，直接返回解析结果
+                // 子路由信息已经包含在 parse_with_sub 的结果中
+                return Ok(Self::#variant_name(route));
+              } else {
+                return Ok(Self::#variant_name(route));
+              }
+            }
+            // 如果递归解析失败，回退到普通解析
+            if let Ok(route) = <#route_type as ::ruled_router::traits::Router>::parse(&full_path) {
+              return Ok(Self::#variant_name(route));
+            }
           }
         }
       }
     } else {
       // 没有 route_prefix 属性，尝试直接解析
       quote! {
+        // 尝试使用 parse_with_sub 进行递归解析
+          if let Ok((route, sub_router)) = <#route_type as ::ruled_router::traits::Router>::parse_with_sub(path) {
+            // 如果有子路由，尝试创建包含子路由的路由实例
+            if let Some(_sub) = sub_router {
+              // 对于有子路由的情况，直接返回解析结果
+              // 子路由信息已经包含在 parse_with_sub 的结果中
+              return Ok(Self::#variant_name(route));
+            } else {
+              return Ok(Self::#variant_name(route));
+            }
+          }
+        // 如果递归解析失败，回退到普通解析
         if let Ok(route) = <#route_type as ::ruled_router::traits::Router>::parse(path) {
           return Ok(Self::#variant_name(route));
         }
@@ -228,6 +264,43 @@ fn generate_try_parse_with_remaining_impl(input: &DeriveInput, variants: &[&Vari
   })
 }
 
+/// 生成 ToRouteInfo trait 的实现
+fn generate_to_route_info_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
+  let mut match_arms = Vec::new();
+
+  for variant in variants {
+    let variant_name = &variant.ident;
+    let route_type = extract_route_type(variant)?;
+
+    let match_arm = quote! {
+      Self::#variant_name(route) => {
+        let sub_route_info = if let Ok((_, sub_match)) = #route_type::parse_with_sub(&route.format()) {
+          sub_match.map(|sub| Box::new(sub.to_route_info()))
+        } else {
+          None
+        };
+
+        ::ruled_router::traits::RouteInfo {
+          pattern: #route_type::pattern(),
+          formatted: route.format(),
+          sub_route_info,
+        }
+      }
+    };
+    match_arms.push(match_arm);
+  }
+
+  let expanded_impl = quote! {
+    fn to_route_info(&self) -> ::ruled_router::traits::RouteInfo {
+      match self {
+        #(#match_arms)*
+      }
+    }
+  };
+
+  Ok(expanded_impl)
+}
+
 /// 主要的 RouterMatch 派生宏实现
 pub fn expand_router_match_derive(input: DeriveInput) -> syn::Result<TokenStream> {
   let name = &input.ident;
@@ -242,6 +315,7 @@ pub fn expand_router_match_derive(input: DeriveInput) -> syn::Result<TokenStream
   let format_impl = generate_format_impl(&variants);
   let patterns_impl = generate_patterns_impl(&variants)?;
   let try_parse_with_remaining_impl = generate_try_parse_with_remaining_impl(&input, &variants)?;
+  let to_route_info_impl = generate_to_route_info_impl(&variants)?;
 
   let expanded = quote! {
     impl ::ruled_router::traits::RouteMatcher for #name {
@@ -252,6 +326,10 @@ pub fn expand_router_match_derive(input: DeriveInput) -> syn::Result<TokenStream
       #patterns_impl
 
       #try_parse_with_remaining_impl
+    }
+
+    impl ::ruled_router::traits::ToRouteInfo for #name {
+      #to_route_info_impl
     }
   };
 

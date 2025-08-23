@@ -303,39 +303,11 @@ struct SystemConfigRoute {
 // ===== 路由解析函数 =====
 
 fn parse_nested_route(url: &str) -> Result<String, Box<dyn std::error::Error>> {
-  // 第一层：解析应用路由
-  let (app_match, remaining) = AppRouterMatch::try_parse_with_remaining(url, 0)?;
+  // 使用自动递归解析功能
+  let app_match = AppRouterMatch::try_parse(url)?;
 
   match app_match {
-    AppRouterMatch::User(mut user_route) => {
-      // 手动解析子路由
-      if !remaining.is_empty() {
-        if let Ok((mut user_sub_match, sub_remaining)) = UserSubRouterMatch::try_parse_with_remaining(remaining, 0) {
-          // 进一步解析第三层路由
-          match &mut user_sub_match {
-            UserSubRouterMatch::Profile(ref mut profile_route) => {
-              if !sub_remaining.is_empty() {
-                if let Ok((profile_detail_match, _detail_remaining)) =
-                  UserProfileDetailRouterMatch::try_parse_with_remaining(sub_remaining, 0)
-                {
-                  profile_route.sub_router = Some(profile_detail_match);
-                }
-              }
-            }
-            UserSubRouterMatch::Content(ref mut content_route) => {
-              if !sub_remaining.is_empty() {
-                if let Ok((content_detail_match, _detail_remaining)) =
-                  UserContentDetailRouterMatch::try_parse_with_remaining(sub_remaining, 0)
-                {
-                  content_route.sub_router = Some(content_detail_match);
-                }
-              }
-            }
-          }
-          user_route.sub_router = Some(user_sub_match);
-        }
-      }
-
+    AppRouterMatch::User(user_route) => {
       if let Some(user_sub_match) = user_route.sub_router {
         match user_sub_match {
           UserSubRouterMatch::Profile(profile_route) => {
@@ -375,35 +347,7 @@ fn parse_nested_route(url: &str) -> Result<String, Box<dyn std::error::Error>> {
         Ok("用户模块主页".to_string())
       }
     }
-    AppRouterMatch::Shop(mut shop_route) => {
-      // 手动解析子路由
-      if !remaining.is_empty() {
-        if let Ok((mut shop_sub_match, sub_remaining)) = ShopSubRouterMatch::try_parse_with_remaining(remaining, 0) {
-          // 进一步解析第三层路由
-          match &mut shop_sub_match {
-            ShopSubRouterMatch::Products(ref mut product_route) => {
-              if !sub_remaining.is_empty() {
-                if let Ok((product_detail_match, _detail_remaining)) =
-                  ShopProductDetailRouterMatch::try_parse_with_remaining(sub_remaining, 0)
-                {
-                  product_route.sub_router = Some(product_detail_match);
-                }
-              }
-            }
-            ShopSubRouterMatch::Orders(ref mut order_route) => {
-              if !sub_remaining.is_empty() {
-                if let Ok((order_detail_match, _detail_remaining)) =
-                  ShopOrderDetailRouterMatch::try_parse_with_remaining(sub_remaining, 0)
-                {
-                  order_route.sub_router = Some(order_detail_match);
-                }
-              }
-            }
-          }
-          shop_route.sub_router = Some(shop_sub_match);
-        }
-      }
-
+    AppRouterMatch::Shop(shop_route) => {
       if let Some(shop_sub_match) = shop_route.sub_router {
         match shop_sub_match {
           ShopSubRouterMatch::Products(product_route) => {
@@ -438,35 +382,7 @@ fn parse_nested_route(url: &str) -> Result<String, Box<dyn std::error::Error>> {
         Ok("商店模块主页".to_string())
       }
     }
-    AppRouterMatch::Admin(mut admin_route) => {
-      // 手动解析子路由
-      if !remaining.is_empty() {
-        if let Ok((mut admin_sub_match, sub_remaining)) = AdminSubRouterMatch::try_parse_with_remaining(remaining, 0) {
-          // 进一步解析第三层路由
-          match &mut admin_sub_match {
-            AdminSubRouterMatch::Users(ref mut user_category_route) => {
-              if !sub_remaining.is_empty() {
-                if let Ok((user_detail_match, _detail_remaining)) =
-                  AdminUserDetailRouterMatch::try_parse_with_remaining(sub_remaining, 0)
-                {
-                  user_category_route.sub_router = Some(user_detail_match);
-                }
-              }
-            }
-            AdminSubRouterMatch::System(ref mut system_category_route) => {
-              if !sub_remaining.is_empty() {
-                if let Ok((system_detail_match, _detail_remaining)) =
-                  AdminSystemDetailRouterMatch::try_parse_with_remaining(sub_remaining, 0)
-                {
-                  system_category_route.sub_router = Some(system_detail_match);
-                }
-              }
-            }
-          }
-          admin_route.sub_router = Some(admin_sub_match);
-        }
-      }
-
+    AppRouterMatch::Admin(admin_route) => {
       if let Some(admin_sub_match) = admin_route.sub_router {
         match admin_sub_match {
           AdminSubRouterMatch::Users(user_category_route) => {
@@ -498,6 +414,117 @@ fn parse_nested_route(url: &str) -> Result<String, Box<dyn std::error::Error>> {
   }
 }
 
+/// 测试自动递归解析功能
+fn test_recursive_parsing() {
+  let test_cases = vec![
+    ("/users?format=json", "UserModuleRoute"),
+    ("/shop?format=xml", "ShopModuleRoute"),
+    ("/admin?format=yaml", "AdminModuleRoute"),
+  ];
+
+  for (url, route_type) in test_cases {
+    println!("\n解析 URL: {url} (使用 {route_type})");
+
+    // 根据 URL 选择合适的路由类型进行递归解析
+    if url.starts_with("/users") {
+      match UserModuleRoute::parse_recursive(url) {
+        Ok(result) => {
+          println!("  当前路由: {:?}", result.current);
+          print_route_info(&result.sub_route_info, 1);
+        }
+        Err(e) => println!("  解析失败: {e}"),
+      }
+    } else if url.starts_with("/shop") {
+      match ShopModuleRoute::parse_recursive(url) {
+        Ok(result) => {
+          println!("  当前路由: {:?}", result.current);
+          print_route_info(&result.sub_route_info, 1);
+        }
+        Err(e) => println!("  解析失败: {e}"),
+      }
+    } else if url.starts_with("/admin") {
+      match AdminModuleRoute::parse_recursive(url) {
+        Ok(result) => {
+          println!("  当前路由: {:?}", result.current);
+          print_route_info(&result.sub_route_info, 1);
+        }
+        Err(e) => println!("  解析失败: {e}"),
+      }
+    }
+  }
+
+  // 演示更复杂的递归解析场景
+  println!("\n=== 演示完整路径的自动解析 ===");
+
+  // 使用新的 parse_from_full_path 方法演示多层解析
+  let test_full_paths = [
+    "/users/profile/basic/123?format=json",
+    "/shop/products/detail/electronics/999?format=xml",
+  ];
+
+  for full_path in &test_full_paths {
+    println!("\n尝试从 AppRouterMatch 解析完整路径: {full_path}");
+
+    // 首先尝试解析顶层路由
+    match AppRouterMatch::try_parse_with_remaining(full_path, 0) {
+      Ok((app_route, remaining)) => {
+        println!("  ✓ 顶层路由解析成功: {app_route:?}");
+        println!("  剩余路径: {remaining}");
+
+        // 如果有剩余路径，继续解析
+        if !remaining.is_empty() {
+          match &app_route {
+            AppRouterMatch::User(_user_route) => {
+              // 尝试直接解析剩余路径作为子路由
+              println!("    尝试解析剩余路径作为子路由: {remaining}");
+              match UserSubRouterMatch::try_parse(remaining) {
+                Ok(sub_match) => {
+                  println!("  ✓ 用户模块递归解析成功:");
+                  println!("        子路由: {sub_match:?}");
+                  println!("        子路由格式: {}", sub_match.format());
+                }
+                Err(e) => {
+                  println!("  ✗ 用户模块递归解析失败: {e:?}");
+                }
+              }
+            }
+            AppRouterMatch::Shop(_shop_route) => {
+              // 尝试直接解析剩余路径作为子路由
+              println!("    尝试解析剩余路径作为子路由: {remaining}");
+              match ShopSubRouterMatch::try_parse(remaining) {
+                Ok(sub_match) => {
+                  println!("  ✓ 商店模块递归解析成功:");
+                  println!("        子路由: {sub_match:?}");
+                  println!("        子路由格式: {}", sub_match.format());
+                }
+                Err(e) => {
+                  println!("  ✗ 商店模块递归解析失败: {e:?}");
+                }
+              }
+            }
+            _ => {
+              println!("  - 其他模块类型，跳过递归解析");
+            }
+          }
+        }
+      }
+      Err(e) => {
+        println!("  ✗ 顶层路由解析失败: {e:?}");
+      }
+    }
+  }
+}
+
+/// 递归打印路由信息
+fn print_route_info(route_info: &Option<Box<ruled_router::traits::RouteInfo>>, depth: usize) {
+  if let Some(info) = route_info {
+    let indent = "  ".repeat(depth);
+    println!("{}子路由模式: {}", indent, info.pattern);
+    println!("{}子路由格式: {}", indent, info.formatted);
+    print_route_info(&info.sub_route_info, depth + 1);
+  }
+}
+
 fn main() {
   let test_urls = vec![
     "/users/profile/basic/123?format=json",
@@ -518,6 +545,9 @@ fn main() {
       Err(e) => println!("✗ {url} -> 错误: {e}"),
     }
   }
+
+  println!("\n=== 自动递归解析示例 ===");
+  test_recursive_parsing();
 }
 
 #[cfg(test)]

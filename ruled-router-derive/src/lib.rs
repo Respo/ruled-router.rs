@@ -148,12 +148,6 @@ fn extract_route_config(input: &DeriveInput) -> syn::Result<(String, Option<Stri
   Err(syn::Error::new_spanned(input, "Missing #[router(pattern = \"...\")]"))
 }
 
-/// Extract the pattern from route attribute (backward compatibility)
-fn extract_route_pattern(input: &DeriveInput) -> syn::Result<String> {
-  let (pattern, _) = extract_route_config(input)?;
-  Ok(pattern)
-}
-
 /// Extract field information from struct
 fn extract_struct_fields(data: &Data) -> syn::Result<Vec<(syn::Ident, syn::Type)>> {
   match data {

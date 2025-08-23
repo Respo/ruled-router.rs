@@ -246,8 +246,21 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
           fn parse_with_sub(path: &str) -> Result<(Self, Option<Self::SubRouterMatch>), ::ruled_router::error::ParseError> {
               let (path_part, query_part) = ::ruled_router::utils::split_path_query(path);
               let parser = ::ruled_router::parser::PathParser::new(#pattern)?;
+
+              // 计算当前模式应该消费的路径长度
               let consumed = parser.consumed_length(path_part)?;
-              let params = parser.match_path(path_part)?;
+
+              // 只解析当前路由模式匹配的部分
+              let current_path_part = &path_part[..consumed.min(path_part.len())];
+
+              // 尝试匹配当前路由的模式
+              let params = match parser.match_path(current_path_part) {
+                  Ok(params) => params,
+                  Err(_) => {
+                      // 如果无法匹配，尝试用完整路径解析（向后兼容）
+                      return Self::parse(path).map(|router| (router, None));
+                  }
+              };
 
               // 解析查询参数
               let query_map = if let Some(query_str) = query_part {
@@ -287,6 +300,22 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
 
           fn pattern() -> &'static str {
               #pattern
+          }
+      }
+
+      impl ::ruled_router::traits::ToRouteInfo for #struct_name {
+          fn to_route_info(&self) -> ::ruled_router::traits::RouteInfo {
+              let sub_route_info = if let Ok((_, sub_match)) = Self::parse_with_sub(&self.format()) {
+                  sub_match.map(|sub| Box::new(sub.to_route_info()))
+              } else {
+                  None
+              };
+
+              ::ruled_router::traits::RouteInfo {
+                  pattern: Self::pattern(),
+                  formatted: self.format(),
+                  sub_route_info,
+              }
           }
       }
   };

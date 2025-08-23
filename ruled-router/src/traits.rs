@@ -3,12 +3,43 @@
 //! 定义了路由解析和格式化的核心接口
 
 use crate::error::ParseError;
+use std::fmt::Debug;
+
+/// 嵌套路由解析结果
+///
+/// 包含当前路由和递归解析的子路由信息
+#[derive(Debug, Clone)]
+pub struct NestedRouteResult<T> {
+  /// 当前层级的路由
+  pub current: T,
+  /// 子路由信息（如果存在）
+  pub sub_route_info: Option<Box<RouteInfo>>,
+}
+
+/// 路由信息的通用表示
+///
+/// 用于表示任意层级的路由信息，支持递归嵌套
+#[derive(Debug, Clone)]
+pub struct RouteInfo {
+  /// 路由的模式字符串
+  pub pattern: &'static str,
+  /// 路由的格式化字符串
+  pub formatted: String,
+  /// 子路由信息（如果存在）
+  pub sub_route_info: Option<Box<RouteInfo>>,
+}
+
+/// 将路由匹配器转换为路由信息的 trait
+pub trait ToRouteInfo {
+  /// 将当前路由匹配器转换为路由信息
+  fn to_route_info(&self) -> RouteInfo;
+}
 
 /// 路由匹配选择的 trait
 ///
 /// 实现此 trait 的枚举类型表示从多个可能的路由中选择一个匹配的路由。
 /// 这是嵌套路由系统的核心，支持 RouteMatcher > Router > RouteMatcher > Router 的结构。
-pub trait RouteMatcher: Sized {
+pub trait RouteMatcher: Sized + ToRouteInfo {
   /// 尝试从路径解析出匹配的路由
   ///
   /// # 参数
@@ -83,7 +114,7 @@ pub struct NoSubRouter;
 
 impl RouteMatcher for NoSubRouter {
   fn try_parse(_path: &str) -> Result<Self, ParseError> {
-    Err(ParseError::invalid_path("No sub-router available"))
+    Err(ParseError::invalid_path("No sub router available"))
   }
 
   fn format(&self) -> String {
@@ -92,6 +123,16 @@ impl RouteMatcher for NoSubRouter {
 
   fn patterns() -> Vec<&'static str> {
     vec![]
+  }
+}
+
+impl ToRouteInfo for NoSubRouter {
+  fn to_route_info(&self) -> RouteInfo {
+    RouteInfo {
+      pattern: "",
+      formatted: String::new(),
+      sub_route_info: None,
+    }
   }
 }
 
@@ -211,6 +252,73 @@ pub trait Router: Sized {
     // 这里需要具体的实现来计算实际消费的长度
     // 暂时返回整个路径的长度
     Ok(path.len())
+  }
+
+  /// 递归解析嵌套路由（自动化版本）
+  ///
+  /// 这个方法会自动递归解析所有层级的嵌套路由，返回一个包含完整路由信息的结构。
+  /// 相比手动解析，这个方法牺牲了一些灵活性，但提供了更简洁的使用方式。
+  ///
+  /// # 参数
+  ///
+  /// * `path` - 要解析的完整路径字符串
+  ///
+  /// # 返回值
+  ///
+  /// 成功时返回 `NestedRouteResult`，包含当前路由和递归解析的子路由信息
+  ///
+  /// # 示例
+  ///
+  /// ```rust,ignore
+  /// let result = UserRoute::parse_recursive("/users/123/profile/basic/456")?;
+  /// println!("Current route: {:?}", result.current);
+  /// println!("Sub route info: {:?}", result.sub_route_info);
+  /// ```
+  fn parse_recursive(path: &str) -> Result<NestedRouteResult<Self>, ParseError> {
+    let (current, sub_match) = Self::parse_with_sub(path)?;
+
+    let sub_route_info = sub_match.map(|sub| Box::new(sub.to_route_info()));
+
+    Ok(NestedRouteResult { current, sub_route_info })
+  }
+
+  /// 从完整路径自动解析多层嵌套路由
+  ///
+  /// 这个方法提供了一个通用的解决方案，可以从任意深度的路径中自动解析出对应的路由结构。
+  /// 它会尝试匹配当前路由，然后递归解析剩余的路径。
+  ///
+  /// # 参数
+  ///
+  /// * `full_path` - 完整的路径字符串
+  ///
+  /// # 返回值
+  ///
+  /// 成功时返回解析结果和剩余未解析的路径
+  ///
+  /// # 示例
+  ///
+  /// ```rust,ignore
+  /// let (result, remaining) = UserRoute::parse_from_full_path("/users/profile/basic/123")?;
+  /// ```
+  fn parse_from_full_path(full_path: &str) -> Result<(NestedRouteResult<Self>, &str), ParseError> {
+    // 使用现有的 consumed_length 方法来计算消费的路径长度
+    let consumed = Self::consumed_length(full_path)?;
+
+    // 构建当前层级的路径
+    let current_path = &full_path[..consumed];
+
+    // 解析当前层级
+    let (current, sub_match) = Self::parse_with_sub(current_path)?;
+
+    // 获取剩余路径
+    let remaining_path = &full_path[consumed..];
+
+    // 处理子路由信息
+    let sub_route_info = sub_match.map(|sub| Box::new(sub.to_route_info()));
+
+    let result = NestedRouteResult { current, sub_route_info };
+
+    Ok((result, remaining_path))
   }
 }
 
