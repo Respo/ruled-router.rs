@@ -24,7 +24,7 @@ struct ProductRoute {
 
 impl Router for ProductRoute {
   type SubRouterMatch = ::ruled_router::NoSubRouter;
-  
+
   fn parse(path: &str) -> Result<Self, ParseError> {
     let (path_part, _) = ruled_router::utils::split_path_query(path);
     let parser = PathParser::new("/products/:category/:id")?;
@@ -102,16 +102,14 @@ impl Query for PaginationQuery {
 
   fn from_query_map(query_map: &HashMap<String, Vec<String>>) -> Result<Self, ParseError> {
     Ok(Self {
-      page: query_map.get("page")
+      page: query_map.get("page").and_then(|values| values.first()).and_then(|s| s.parse().ok()),
+      limit: query_map
+        .get("limit")
         .and_then(|values| values.first())
         .and_then(|s| s.parse().ok()),
-      limit: query_map.get("limit")
-        .and_then(|values| values.first())
-        .and_then(|s| s.parse().ok()),
-      sort: query_map.get("sort")
-        .and_then(|values| values.first())
-        .map(|s| s.to_string()),
-      filter: query_map.get("filter")
+      sort: query_map.get("sort").and_then(|values| values.first()).map(|s| s.to_string()),
+      filter: query_map
+        .get("filter")
         .map(|values| values.iter().map(|s| s.to_string()).collect())
         .unwrap_or_default(),
     })

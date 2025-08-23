@@ -2,8 +2,7 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DeriveInput, GenericArgument, PathArguments, Type, TypePath, Data, Fields, Lit, Meta};
-
+use syn::{Data, DeriveInput, Fields, GenericArgument, Lit, Meta, PathArguments, Type, TypePath};
 
 /// Expand the Query derive macro
 pub fn expand_query_derive(input: DeriveInput) -> syn::Result<TokenStream> {
@@ -54,9 +53,9 @@ pub fn expand_query_derive(input: DeriveInput) -> syn::Result<TokenStream> {
 
 /// 字段信息结构
 struct FieldInfo {
-    name: syn::Ident,
-    ty: Type,
-    query_name: String,
+  name: syn::Ident,
+  ty: Type,
+  query_name: String,
 }
 
 /// 提取查询字段信息（包括属性）
@@ -89,7 +88,7 @@ fn extract_query_name(field: &syn::Field, default_name: &syn::Ident) -> syn::Res
     if attr.path().is_ident("query") {
       if let Meta::List(meta_list) = &attr.meta {
         let parser = meta_list.parse_args_with(syn::punctuated::Punctuated::<Meta, syn::Token![,]>::parse_terminated)?;
-        
+
         for meta in parser {
           if let Meta::NameValue(name_value) = meta {
             if name_value.path.is_ident("rename") {

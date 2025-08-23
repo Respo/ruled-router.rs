@@ -4,7 +4,7 @@
 
 use crate::error::ParseError;
 use crate::parser::{PathParser, QueryParser};
-use crate::traits::{Query, Router, ToParam};
+use crate::traits::ToParam;
 use crate::utils::{format_query_string, normalize_path};
 use std::collections::HashMap;
 

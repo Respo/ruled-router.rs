@@ -2,17 +2,15 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DeriveInput, Data, Fields, Variant};
+use syn::{Data, DeriveInput, Fields, Variant};
 
 /// 提取枚举变体信息
 fn extract_enum_variants(data: &Data) -> syn::Result<Vec<&Variant>> {
   match data {
-    Data::Enum(data_enum) => {
-      Ok(data_enum.variants.iter().collect())
-    }
+    Data::Enum(data_enum) => Ok(data_enum.variants.iter().collect()),
     _ => Err(syn::Error::new(
       proc_macro2::Span::call_site(),
-      "RouterMatch can only be derived for enums"
+      "RouterMatch can only be derived for enums",
     )),
   }
 }
@@ -30,15 +28,11 @@ fn has_route_attribute(variant: &Variant) -> bool {
 /// 提取变体的路由类型
 fn extract_route_type(variant: &Variant) -> syn::Result<&syn::Type> {
   match &variant.fields {
-    Fields::Unnamed(fields) if fields.unnamed.len() == 1 => {
-      Ok(&fields.unnamed.first().unwrap().ty)
-    }
-    Fields::Named(fields) if fields.named.len() == 1 => {
-      Ok(&fields.named.first().unwrap().ty)
-    }
+    Fields::Unnamed(fields) if fields.unnamed.len() == 1 => Ok(&fields.unnamed.first().unwrap().ty),
+    Fields::Named(fields) if fields.named.len() == 1 => Ok(&fields.named.first().unwrap().ty),
     _ => Err(syn::Error::new_spanned(
       variant,
-      "RouterMatch variants must have exactly one field containing a Router type"
+      "RouterMatch variants must have exactly one field containing a Router type",
     )),
   }
 }
@@ -75,7 +69,7 @@ fn generate_format_impl(variants: &[&Variant]) -> TokenStream {
 
   for variant in variants {
     let variant_name = &variant.ident;
-    
+
     let match_arm = quote! {
       Self::#variant_name(route) => route.format(),
     };
@@ -97,7 +91,7 @@ fn generate_patterns_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
 
   for variant in variants {
     let route_type = extract_route_type(variant)?;
-    
+
     let pattern_call = quote! {
       <#route_type as ::ruled_router::traits::Router>::pattern()
     };
@@ -163,11 +157,11 @@ pub fn expand_router_match_derive(input: DeriveInput) -> syn::Result<TokenStream
   let expanded = quote! {
     impl ::ruled_router::traits::RouterMatch for #name {
       #try_parse_impl
-      
+
       #format_impl
-      
+
       #patterns_impl
-      
+
       #try_parse_with_remaining_impl
     }
   };

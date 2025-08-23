@@ -320,11 +320,6 @@ fn parse_nested_route(url: &str) -> Result<AppRouterMatch, Box<dyn std::error::E
   AppRouterMatch::try_parse(url).map_err(|e| e.into())
 }
 
-/// 格式化嵌套路由为 URL
-fn format_nested_route(route_match: &AppRouterMatch) -> String {
-  route_match.format()
-}
-
 /// 显示路由匹配信息
 fn display_route_match_info(route_match: &AppRouterMatch, description: &str) {
   println!("\n=== {description} ===");

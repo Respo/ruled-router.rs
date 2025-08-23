@@ -18,7 +18,7 @@ struct UserRoute {
 
 impl Router for UserRoute {
   type SubRouterMatch = ::ruled_router::NoSubRouter;
-  
+
   fn parse(path: &str) -> Result<Self, ParseError> {
     let (path_part, _) = ruled_router::utils::split_path_query(path);
     let parser = PathParser::new("/users/:id")?;
@@ -79,10 +79,9 @@ impl Query for SimpleQuery {
 
   fn from_query_map(query_map: &std::collections::HashMap<String, Vec<String>>) -> Result<Self, ParseError> {
     Ok(Self {
-      name: query_map.get("name")
-        .and_then(|values| values.first())
-        .map(|s| s.to_string()),
-      active: query_map.get("active")
+      name: query_map.get("name").and_then(|values| values.first()).map(|s| s.to_string()),
+      active: query_map
+        .get("active")
         .and_then(|values| values.first())
         .and_then(|s| s.parse().ok()),
     })

@@ -75,7 +75,9 @@ pub fn derive_query(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(QueryString)]
 pub fn derive_querystring(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
-  expand_querystring_derive(input).unwrap_or_else(syn::Error::into_compile_error).into()
+  expand_querystring_derive(input)
+    .unwrap_or_else(syn::Error::into_compile_error)
+    .into()
 }
 
 /// Derive macro for implementing the RouterMatch trait
@@ -96,7 +98,9 @@ pub fn derive_querystring(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(RouterMatch, attributes(route))]
 pub fn derive_router_match(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
-  expand_router_match_derive(input).unwrap_or_else(syn::Error::into_compile_error).into()
+  expand_router_match_derive(input)
+    .unwrap_or_else(syn::Error::into_compile_error)
+    .into()
 }
 
 /// Extract route configuration from router attribute
@@ -106,10 +110,10 @@ fn extract_route_config(input: &DeriveInput) -> syn::Result<(String, Option<Stri
       if let Meta::List(meta_list) = &attr.meta {
         let mut pattern = None;
         let mut query_type = None;
-        
+
         // Parse multiple name-value pairs
         let parser = meta_list.parse_args_with(syn::punctuated::Punctuated::<Meta, syn::Token![,]>::parse_terminated)?;
-        
+
         for meta in parser {
           if let Meta::NameValue(name_value) = meta {
             if name_value.path.is_ident("pattern") {
@@ -127,7 +131,7 @@ fn extract_route_config(input: &DeriveInput) -> syn::Result<(String, Option<Stri
             }
           }
         }
-        
+
         if let Some(pattern) = pattern {
           return Ok((pattern, query_type));
         }

@@ -73,7 +73,7 @@ impl PathParser {
             return Err(ParseError::invalid_path("Parameter must have a name"));
           }
           parsed_segments.push(PathSegment::Parameter(param_name.to_string()));
-          
+
           // 第二部分是可选参数
           let optional_name = parts[1];
           if optional_name.is_empty() {
@@ -83,7 +83,7 @@ impl PathParser {
           continue;
         }
       }
-      
+
       let parsed_segment = if let Some(name) = segment.strip_prefix('*') {
         // 通配符段
         if name.is_empty() {
@@ -104,7 +104,7 @@ impl PathParser {
         PathSegment::Parameter(name.to_string())
       } else if segment.starts_with('{') && segment.ends_with('}') {
         // 大括号参数段 ({name})
-        let name = &segment[1..segment.len()-1];
+        let name = &segment[1..segment.len() - 1];
         if name.is_empty() {
           return Err(ParseError::invalid_path("Parameter must have a name"));
         }

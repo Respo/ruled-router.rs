@@ -2,7 +2,7 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DeriveInput, Type, Data, Fields};
+use syn::{Data, DeriveInput, Fields, Type};
 
 use crate::extract_route_config;
 
@@ -14,10 +14,10 @@ fn extract_path_params(pattern: &str) -> Vec<String> {
   for segment in segments {
     if segment.starts_with(':') {
       // 支持 :param 格式
-      params.push(segment[1..].to_string());
+      params.push(segment.strip_prefix(':').unwrap().to_string());
     } else if segment.starts_with('{') && segment.ends_with('}') {
       // 支持 {param} 格式
-      params.push(segment[1..segment.len()-1].to_string());
+      params.push(segment[1..segment.len() - 1].to_string());
     }
   }
 
@@ -55,27 +55,28 @@ fn has_query_attribute(field: &syn::Field) -> bool {
   false
 }
 
-fn separate_fields(
-    fields: &[(syn::Ident, Type, bool)],
-    param_names: &[String],
-) -> (Vec<(syn::Ident, Type)>, Vec<(syn::Ident, Type)>) {
-    let mut path_fields = Vec::new();
-    let mut query_fields = Vec::new();
+// Define type aliases to improve readability and reduce complexity
+type RouteField = (syn::Ident, Type, bool);
+type ParsedField = (syn::Ident, Type);
 
-    for (field_name, field_type, is_query) in fields {
-        let field_name_str = field_name.to_string();
-        
-        if *is_query {
-            // 这是查询字段（有 #[query] 属性）
-            query_fields.push((field_name.clone(), field_type.clone()));
-        } else if param_names.contains(&field_name_str) {
-            // 这是路径参数
-            path_fields.push((field_name.clone(), field_type.clone()));
-        }
-        // 忽略其他字段
+fn separate_fields(fields: &[RouteField], param_names: &[String]) -> (Vec<ParsedField>, Vec<ParsedField>) {
+  let mut path_fields = Vec::new();
+  let mut query_fields = Vec::new();
+
+  for (field_name, field_type, is_query) in fields {
+    let field_name_str = field_name.to_string();
+
+    if *is_query {
+      // 这是查询字段（有 #[query] 属性）
+      query_fields.push((field_name.clone(), field_type.clone()));
+    } else if param_names.contains(&field_name_str) {
+      // 这是路径参数
+      path_fields.push((field_name.clone(), field_type.clone()));
     }
+    // 忽略其他字段
+  }
 
-    (path_fields, query_fields)
+  (path_fields, query_fields)
 }
 
 /// 生成解析路径字段的代码
@@ -103,16 +104,16 @@ fn generate_parse_path_fields(fields: &[(syn::Ident, Type)], param_names: &[Stri
 
 /// 生成解析查询字段的代码
 fn generate_parse_query_fields(fields: &[(syn::Ident, Type)]) -> Vec<TokenStream> {
-    let mut parse_fields = Vec::new();
+  let mut parse_fields = Vec::new();
 
-    for (field_name, field_type) in fields {
-        let parse_code = quote! {
-            #field_name: <#field_type>::parse(query_part.unwrap_or(""))?
-        };
-        parse_fields.push(parse_code);
-    }
+  for (field_name, field_type) in fields {
+    let parse_code = quote! {
+        #field_name: <#field_type>::parse(query_part.unwrap_or(""))?
+    };
+    parse_fields.push(parse_code);
+  }
 
-    parse_fields
+  parse_fields
 }
 
 /// 生成格式化路径字段的代码
@@ -132,20 +133,20 @@ fn generate_format_path_fields(fields: &[(syn::Ident, Type)]) -> Vec<TokenStream
 
 /// 生成格式化查询逻辑的代码
 fn generate_format_query_logic(fields: &[(syn::Ident, Type)]) -> TokenStream {
-    if !fields.is_empty() {
-        let field_name = &fields[0].0;
-        return quote! {
-            let query_string = self.#field_name.format();
-            if !query_string.is_empty() {
-                url.push('?');
-                url.push_str(&query_string);
-            }
-        };
-    }
-    
-    quote! {
-        // 没有查询字段
-    }
+  if !fields.is_empty() {
+    let field_name = &fields[0].0;
+    return quote! {
+        let query_string = self.#field_name.format();
+        if !query_string.is_empty() {
+            url.push('?');
+            url.push_str(&query_string);
+        }
+    };
+  }
+
+  quote! {
+      // 没有查询字段
+  }
 }
 
 /// Expand the Router derive macro
@@ -171,7 +172,7 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
   let expanded = quote! {
       impl ::ruled_router::traits::Router for #struct_name {
           type SubRouterMatch = ::ruled_router::traits::NoSubRouter;
-          
+
           fn parse(path: &str) -> Result<Self, ::ruled_router::error::ParseError> {
               let (path_part, query_part) = ::ruled_router::utils::split_path_query(path);
               let parser = ::ruled_router::parser::PathParser::new(#pattern)?;
@@ -196,9 +197,9 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
 
               let formatter = ::ruled_router::formatter::PathFormatter::new(#pattern).unwrap();
               let mut url = formatter.format(&params).unwrap();
-              
+
               #format_query_logic
-              
+
               url
           }
 
