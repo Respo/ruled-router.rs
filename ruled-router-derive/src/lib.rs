@@ -29,6 +29,7 @@ pub fn sub_router(_args: TokenStream, input: TokenStream) -> TokenStream {
 /// ```rust
 /// use ruled_router_derive::Router;
 /// use ruled_router::traits::Router;
+/// use ruled_router::RouteMatcher;
 ///
 /// #[derive(Router)]
 /// #[router(pattern = "/users/:id")]

@@ -174,15 +174,18 @@ fn generate_try_parse_with_remaining_impl(input: &DeriveInput, variants: &[&Vari
           if path.starts_with(#enum_prefix) && path.len() > #enum_prefix.len() {
             let remaining_after_enum_prefix = &path[#enum_prefix.len()..];
 
-            // 直接尝试用子路由的模式来解析剩余路径
-            let parser = ::ruled_router::parser::PathParser::new(<#route_type as ::ruled_router::traits::Router>::pattern())?;
-            if let Ok(consumed) = parser.consumed_length(remaining_after_enum_prefix) {
-              let route_path = &remaining_after_enum_prefix[..consumed];
-              let final_remaining_path = &remaining_after_enum_prefix[consumed..];
+            // 检查剩余路径是否匹配变体的 route
+            if remaining_after_enum_prefix.starts_with(#prefix) {
+              // 计算子路由 pattern 应该消耗的路径长度
+              let parser = ::ruled_router::parser::PathParser::new(<#route_type as ::ruled_router::traits::Router>::pattern())?;
+              if let Ok(consumed) = parser.consumed_length(remaining_after_enum_prefix) {
+                let route_path = &remaining_after_enum_prefix[..consumed];
+                let final_remaining_path = &remaining_after_enum_prefix[consumed..];
 
-              // 尝试解析匹配的路径部分
-              if let Ok((route, _)) = <#route_type as ::ruled_router::traits::Router>::parse_with_sub(route_path) {
-                return Ok((Self::#variant_name(route), final_remaining_path));
+                // 尝试解析匹配的路径部分
+                if let Ok((route, _)) = <#route_type as ::ruled_router::traits::Router>::parse_with_sub(route_path) {
+                  return Ok((Self::#variant_name(route), final_remaining_path));
+                }
               }
             }
           }
