@@ -2,8 +2,8 @@
 //! 展示如何使用 RouterMatch derive 宏来减少模板代码
 
 use ruled_router::prelude::*;
-use ruled_router::RouterMatch;
-use ruled_router_derive::{Query, Router, RouterMatch as RouterMatchDerive};
+use ruled_router::RouteMatcher;
+use ruled_router_derive::{Query, Router, RouterMatch};
 
 // ===== 查询参数定义 =====
 
@@ -39,10 +39,10 @@ struct UserSettingsRoute {
   user_id: u32,
 }
 
-// ===== RouterMatch 定义 (使用 derive 宏) =====
+// ===== RouteMatcher 定义 (使用 derive 宏) =====
 
-/// 用户路由匹配 - 使用 derive 宏自动生成 RouterMatch trait 实现
-#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+/// 用户路由匹配 - 使用 derive 宏自动生成 RouteMatcher trait 实现
+#[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum UserRouterMatch {
   Detail(UserDetailRoute),
   Profile(UserProfileRoute),

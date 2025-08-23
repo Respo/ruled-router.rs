@@ -22,7 +22,7 @@ fn extract_route_type(variant: &Variant) -> syn::Result<&syn::Type> {
     Fields::Named(fields) if fields.named.len() == 1 => Ok(&fields.named.first().unwrap().ty),
     _ => Err(syn::Error::new_spanned(
       variant,
-      "RouterMatch variants must have exactly one field containing a Router or RouterMatch type",
+      "RouterMatch variants must have exactly one field containing a Router or RouteMatcher type",
     )),
   }
 }
@@ -39,7 +39,10 @@ fn extract_route_prefix(variant: &Variant) -> syn::Result<Option<String>> {
           }
         }
       }
-      return Err(syn::Error::new_spanned(attr, "route_prefix must be a string literal in the format #[route_prefix = \"value\"]"));
+      return Err(syn::Error::new_spanned(
+        attr,
+        "route_prefix must be a string literal in the format #[route_prefix = \"value\"]",
+      ));
     }
   }
   Ok(None)
@@ -56,13 +59,13 @@ fn generate_try_parse_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
     let route_prefix = extract_route_prefix(variant)?;
 
     let match_arm = if let Some(prefix) = route_prefix {
-       // 如果有 route_prefix 属性，先检查前缀匹配
-       quote! {
-         if path.starts_with(#prefix) {
-           return Ok(Self::#variant_name(#route_type {}));
-         }
-       }
-     } else {
+      // 如果有 route_prefix 属性，先检查前缀匹配
+      quote! {
+        if path.starts_with(#prefix) {
+          return Ok(Self::#variant_name(#route_type {}));
+        }
+      }
+    } else {
       // 没有 route_prefix 属性，尝试直接解析
       quote! {
         if let Ok(route) = <#route_type as ::ruled_router::traits::Router>::parse(path) {
@@ -177,7 +180,7 @@ pub fn expand_router_match_derive(input: DeriveInput) -> syn::Result<TokenStream
   let try_parse_with_remaining_impl = generate_try_parse_with_remaining_impl(&variants)?;
 
   let expanded = quote! {
-    impl ::ruled_router::traits::RouterMatch for #name {
+    impl ::ruled_router::traits::RouteMatcher for #name {
       #try_parse_impl
 
       #format_impl

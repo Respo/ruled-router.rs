@@ -7,8 +7,8 @@ use crate::error::ParseError;
 /// 路由匹配选择的 trait
 ///
 /// 实现此 trait 的枚举类型表示从多个可能的路由中选择一个匹配的路由。
-/// 这是嵌套路由系统的核心，支持 RouterMatch > Router > RouterMatch > Router 的结构。
-pub trait RouterMatch: Sized {
+/// 这是嵌套路由系统的核心，支持 RouteMatcher > Router > RouteMatcher > Router 的结构。
+pub trait RouteMatcher: Sized {
   /// 尝试从路径解析出匹配的路由
   ///
   /// # 参数
@@ -81,7 +81,7 @@ pub trait RouterMatch: Sized {
 #[derive(Debug, Clone, PartialEq)]
 pub struct NoSubRouter;
 
-impl RouterMatch for NoSubRouter {
+impl RouteMatcher for NoSubRouter {
   fn try_parse(_path: &str) -> Result<Self, ParseError> {
     Err(ParseError::invalid_path("No sub-router available"))
   }
@@ -104,7 +104,7 @@ pub trait Router: Sized {
   ///
   /// 如果路由支持子路由，则定义为具体的 RouterMatch 类型；
   /// 如果不支持子路由，则使用 NoSubRouter 类型。
-  type SubRouterMatch: RouterMatch;
+  type SubRouterMatch: RouteMatcher;
   /// 从路径字符串解析路由
   ///
   /// # 参数

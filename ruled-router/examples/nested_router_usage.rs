@@ -1,16 +1,16 @@
 //! 三层嵌套路由使用示例
 //!
 //! 本示例展示了如何使用 ruled-router 库实现深度嵌套的路由结构。
-//! 严格遵循 RouterMatch -> Router -> RouterMatch -> Router -> RouterMatch -> Router 的设计模式。
+//! 严格遵循 RouteMatcher -> Router -> RouteMatcher -> Router -> RouteMatcher -> Router 的设计模式。
 //!
-//! 架构设计：
-//! 1. AppRouterMatch (第一层 RouterMatch) -> ModuleRoute (第一层 Router)
-//! 2. ModuleRoute -> SubRouterMatch (第二层 RouterMatch) -> CategoryRoute (第二层 Router)
-//! 3. CategoryRoute -> DetailRouterMatch (第三层 RouterMatch) -> DetailRoute (第三层 Router)
+//! 架构层次：
+//! 1. AppRouterMatch (第一层 RouteMatcher) -> ModuleRoute (第一层 Router)
+//! 2. ModuleRoute -> SubRouterMatch (第二层 RouteMatcher) -> CategoryRoute (第二层 Router)
+//! 3. CategoryRoute -> DetailRouterMatch (第三层 RouteMatcher) -> DetailRoute (第三层 Router)
 
 use ruled_router::prelude::*;
-use ruled_router::RouterMatch;
-use ruled_router_derive::RouterMatch as RouterMatchDerive;
+use ruled_router::RouteMatcher;
+use ruled_router_derive::RouterMatch;
 
 // ===== 查询参数定义 (每层只保留一个) =====
 
@@ -172,49 +172,49 @@ struct SystemConfigRoute {
   query: SimpleQuery,
 }
 
-// ===== RouterMatch 定义 =====
+// ===== RouteMatcher 定义 =====
 
-/// 用户个人详情路由匹配 - 第三层 RouterMatch
-#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+/// 用户个人详情路由匹配 - 第三层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum UserProfileDetailRouterMatch {
   BasicInfo(UserBasicInfoRoute),
   Settings(UserSettingsRoute),
 }
 
-/// 用户内容详情路由匹配 - 第三层 RouterMatch
-#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+/// 用户内容详情路由匹配 - 第三层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum UserContentDetailRouterMatch {
   Post(UserPostRoute),
   Comment(UserCommentRoute),
 }
 
-/// 商店产品详情路由匹配 - 第三层 RouterMatch
-#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+/// 商店产品详情路由匹配 - 第三层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum ShopProductDetailRouterMatch {
   Detail(ProductDetailRoute),
   List(ProductListRoute),
 }
 
-/// 商店订单详情路由匹配 - 第三层 RouterMatch
-#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+/// 商店订单详情路由匹配 - 第三层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum ShopOrderDetailRouterMatch {
   Detail(OrderDetailRoute),
 }
 
-/// 管理用户详情路由匹配 - 第三层 RouterMatch
-#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+/// 管理用户详情路由匹配 - 第三层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum AdminUserDetailRouterMatch {
   Manage(AdminUserManageRoute),
 }
 
-/// 管理系统详情路由匹配 - 第三层 RouterMatch
-#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+/// 管理系统详情路由匹配 - 第三层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum AdminSystemDetailRouterMatch {
   Config(SystemConfigRoute),
 }
 
-/// 用户子路由匹配 - 第二层 RouterMatch
-#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+/// 用户子路由匹配 - 第二层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum UserSubRouterMatch {
   #[route_prefix = "/users/profile"]
   Profile(UserProfileCategoryRoute),
@@ -222,8 +222,8 @@ enum UserSubRouterMatch {
   Content(UserContentCategoryRoute),
 }
 
-/// 商店子路由匹配 - 第二层 RouterMatch
-#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+/// 商店子路由匹配 - 第二层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum ShopSubRouterMatch {
   #[route_prefix = "/shop/products"]
   Products(ShopProductCategoryRoute),
@@ -231,8 +231,8 @@ enum ShopSubRouterMatch {
   Orders(ShopOrderCategoryRoute),
 }
 
-/// 管理子路由匹配 - 第二层 RouterMatch
-#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+/// 管理子路由匹配 - 第二层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum AdminSubRouterMatch {
   #[route_prefix = "/admin/users"]
   Users(AdminUserCategoryRoute),
@@ -240,9 +240,9 @@ enum AdminSubRouterMatch {
   System(AdminSystemCategoryRoute),
 }
 
-/// 顶级应用路由匹配 - 第一层 RouterMatch
-/// 严格遵循 RouterMatch -> Router -> RouterMatch -> Router -> RouterMatch -> Router 模式
-#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+/// 顶级应用路由匹配 - 第一层 RouteMatcher
+/// 严格遵循 RouteMatcher -> Router -> RouteMatcher -> Router -> RouteMatcher -> Router 模式
+#[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum AppRouterMatch {
   #[route_prefix = "/users"]
   User(UserModuleRoute),
@@ -252,11 +252,11 @@ enum AppRouterMatch {
   Admin(AdminModuleRoute),
 }
 
-
-
 // ===== 辅助函数 =====
 
-fn parse_nested_route(url: &str) -> Result<(AppRouterMatch, Option<Box<dyn std::fmt::Debug>>, Option<Box<dyn std::fmt::Debug>>), Box<dyn std::error::Error>> {
+fn parse_nested_route(
+  url: &str,
+) -> Result<(AppRouterMatch, Option<Box<dyn std::fmt::Debug>>, Option<Box<dyn std::fmt::Debug>>), Box<dyn std::error::Error>> {
   // 第一层：解析模块路由
   let app_match = AppRouterMatch::try_parse(url)?;
 
@@ -341,7 +341,7 @@ fn parse_nested_route(url: &str) -> Result<(AppRouterMatch, Option<Box<dyn std::
 
 fn main() {
   println!("=== 三层嵌套路由使用示例 ===");
-  println!("架构：RouterMatch -> Router -> RouterMatch -> Router -> RouterMatch -> Router");
+  println!("架构：RouteMatcher -> Router -> RouteMatcher -> Router -> RouteMatcher -> Router");
   println!();
 
   let test_urls = vec![
@@ -385,10 +385,10 @@ fn main() {
   }
 
   println!("=== 架构验证 ===");
-  println!("✓ AppRouterMatch (第一层 RouterMatch) -> UserModuleRoute/ShopModuleRoute/AdminModuleRoute (第一层 Router)");
-  println!("✓ UserModuleRoute -> UserSubRouterMatch (第二层 RouterMatch) -> UserProfileCategoryRoute/UserContentCategoryRoute (第二层 Router)");
-  println!("✓ UserProfileCategoryRoute -> UserProfileDetailRouterMatch (第三层 RouterMatch) -> UserBasicInfoRoute/UserSettingsRoute (第三层 Router)");
-  println!("✓ 严格遵循 RouterMatch -> Router -> RouterMatch -> Router -> RouterMatch -> Router 模式");
+  println!("✓ AppRouterMatch (第一层 RouteMatcher) -> UserModuleRoute/ShopModuleRoute/AdminModuleRoute (第一层 Router)");
+  println!("✓ UserModuleRoute -> UserSubRouterMatch (第二层 RouteMatcher) -> UserProfileCategoryRoute/UserContentCategoryRoute (第二层 Router)");
+  println!("✓ UserProfileCategoryRoute -> UserProfileDetailRouterMatch (第三层 RouteMatcher) -> UserBasicInfoRoute/UserSettingsRoute (第三层 Router)");
+  println!("✓ 严格遵循 RouteMatcher -> Router -> RouteMatcher -> Router -> RouteMatcher -> Router 模式");
 }
 
 #[cfg(test)]
@@ -397,7 +397,7 @@ mod tests {
 
   #[test]
   fn test_architecture_compliance() {
-    // 测试架构是否符合 RouterMatch -> Router -> RouterMatch -> Router -> RouterMatch -> Router
+    // 测试架构是否符合 RouteMatcher -> Router -> RouteMatcher -> Router -> RouteMatcher -> Router
 
     // 第一层：AppRouterMatch -> ModuleRoute
     let app_match = AppRouterMatch::try_parse("/users/profile/123").unwrap();

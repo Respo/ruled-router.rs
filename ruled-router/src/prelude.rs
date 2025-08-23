@@ -5,7 +5,7 @@
 pub use crate::error::ParseError;
 pub use crate::formatter::{PathFormatter, QueryFormatter};
 pub use crate::parser::{PathParser, QueryParser};
-pub use crate::traits::{FromParam, Query, Router, ToParam};
+pub use crate::traits::{FromParam, Query, RouteMatcher, Router, ToParam};
 pub use crate::utils::*;
 
 #[cfg(feature = "derive")]
