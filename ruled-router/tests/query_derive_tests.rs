@@ -26,6 +26,7 @@ struct FilterQuery {
 
 /// 用户偏好查询测试
 #[derive(Debug, Clone, PartialEq, Default, Query)]
+#[allow(dead_code)]
 struct UserPreferencesQuery {
   theme: Option<String>,
   lang: Option<String>,
@@ -35,6 +36,7 @@ struct UserPreferencesQuery {
 
 /// 分页查询测试
 #[derive(Debug, Clone, PartialEq, Default, Query)]
+#[allow(dead_code)]
 struct PaginationQuery {
   page: Option<u32>,
   per_page: Option<u32>,

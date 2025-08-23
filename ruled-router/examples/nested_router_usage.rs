@@ -34,6 +34,7 @@ enum AppRouterMatch {
 /// 应用根路由 - 第一层 Router
 #[derive(Debug, Clone, PartialEq, Router)]
 #[router(pattern = "/")]
+#[allow(dead_code)]
 struct AppRoute {
   #[query]
   query: SimpleQuery,
