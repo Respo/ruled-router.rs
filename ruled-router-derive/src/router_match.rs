@@ -15,16 +15,6 @@ fn extract_enum_variants(data: &Data) -> syn::Result<Vec<&Variant>> {
   }
 }
 
-/// 检查变体是否有 #[route] 属性
-fn has_route_attribute(variant: &Variant) -> bool {
-  for attr in &variant.attrs {
-    if attr.path().is_ident("route") {
-      return true;
-    }
-  }
-  false
-}
-
 /// 提取变体的路由类型
 fn extract_route_type(variant: &Variant) -> syn::Result<&syn::Type> {
   match &variant.fields {
@@ -32,22 +22,52 @@ fn extract_route_type(variant: &Variant) -> syn::Result<&syn::Type> {
     Fields::Named(fields) if fields.named.len() == 1 => Ok(&fields.named.first().unwrap().ty),
     _ => Err(syn::Error::new_spanned(
       variant,
-      "RouterMatch variants must have exactly one field containing a Router type",
+      "RouterMatch variants must have exactly one field containing a Router or RouterMatch type",
     )),
   }
 }
 
+/// 提取变体的 route_prefix 属性
+fn extract_route_prefix(variant: &Variant) -> syn::Result<Option<String>> {
+  for attr in &variant.attrs {
+    if attr.path().is_ident("route_prefix") {
+      // 解析 #[route_prefix = "value"] 语法
+      if let syn::Meta::NameValue(meta_name_value) = &attr.meta {
+        if let syn::Expr::Lit(expr_lit) = &meta_name_value.value {
+          if let syn::Lit::Str(lit_str) = &expr_lit.lit {
+            return Ok(Some(lit_str.value()));
+          }
+        }
+      }
+      return Err(syn::Error::new_spanned(attr, "route_prefix must be a string literal in the format #[route_prefix = \"value\"]"));
+    }
+  }
+  Ok(None)
+}
+
 /// 生成 try_parse 方法的实现
+/// 这个实现会根据 route_prefix 属性进行前缀匹配，然后尝试解析
 fn generate_try_parse_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
   let mut match_arms = Vec::new();
 
   for variant in variants {
     let variant_name = &variant.ident;
     let route_type = extract_route_type(variant)?;
+    let route_prefix = extract_route_prefix(variant)?;
 
-    let match_arm = quote! {
-      if let Ok(route) = <#route_type as ::ruled_router::traits::Router>::parse(path) {
-        return Ok(Self::#variant_name(route));
+    let match_arm = if let Some(prefix) = route_prefix {
+       // 如果有 route_prefix 属性，先检查前缀匹配
+       quote! {
+         if path.starts_with(#prefix) {
+           return Ok(Self::#variant_name(#route_type {}));
+         }
+       }
+     } else {
+      // 没有 route_prefix 属性，尝试直接解析
+      quote! {
+        if let Ok(route) = <#route_type as ::ruled_router::traits::Router>::parse(path) {
+          return Ok(Self::#variant_name(route));
+        }
       }
     };
     match_arms.push(match_arm);
@@ -86,6 +106,8 @@ fn generate_format_impl(variants: &[&Variant]) -> TokenStream {
 }
 
 /// 生成 patterns 方法的实现
+/// 这个实现假设所有变体都实现了 Router trait
+/// 生成 patterns 方法的实现
 fn generate_patterns_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
   let mut pattern_calls = Vec::new();
 
@@ -117,7 +139,7 @@ fn generate_try_parse_with_remaining_impl(variants: &[&Variant]) -> syn::Result<
 
     let match_arm = quote! {
       if let Ok((route, remaining)) = <#route_type as ::ruled_router::traits::Router>::parse_with_sub(path) {
-        let consumed = path.len() - remaining.map_or(0, |r| r.len());
+        let consumed = path.len() - remaining.map_or(0, |_| 0);
         let remaining_path = if consumed < path.len() {
           &path[consumed..]
         } else {

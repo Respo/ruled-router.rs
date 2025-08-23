@@ -95,12 +95,10 @@ pub fn derive_querystring(input: TokenStream) -> TokenStream {
 ///     Api(ApiRoute),
 /// }
 /// ```
-#[proc_macro_derive(RouterMatch, attributes(route))]
+#[proc_macro_derive(RouterMatch, attributes(route, route_prefix))]
 pub fn derive_router_match(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
-  expand_router_match_derive(input)
-    .unwrap_or_else(syn::Error::into_compile_error)
-    .into()
+  expand_router_match_derive(input).unwrap_or_else(syn::Error::into_compile_error).into()
 }
 
 /// Extract route configuration from router attribute

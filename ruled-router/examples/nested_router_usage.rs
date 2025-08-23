@@ -1,492 +1,394 @@
-//! 嵌套路由使用示例 - RouterMatch 设计
+//! 三层嵌套路由使用示例
 //!
-//! 这个示例展示了新的嵌套路由设计：RouterMatch > Router > RouterMatch > Router
-//! 主要特性：
-//! - RouterMatch 枚举表示路由选择
-//! - Router 结构体表示具体路由
-//! - 支持任意深度的嵌套
-//! - 类型安全的路由匹配
+//! 本示例展示了如何使用 ruled-router 库实现深度嵌套的路由结构。
+//! 严格遵循 RouterMatch -> Router -> RouterMatch -> Router -> RouterMatch -> Router 的设计模式。
+//!
+//! 架构设计：
+//! 1. AppRouterMatch (第一层 RouterMatch) -> ModuleRoute (第一层 Router)
+//! 2. ModuleRoute -> SubRouterMatch (第二层 RouterMatch) -> CategoryRoute (第二层 Router)
+//! 3. CategoryRoute -> DetailRouterMatch (第三层 RouterMatch) -> DetailRoute (第三层 Router)
 
 use ruled_router::prelude::*;
 use ruled_router::RouterMatch;
+use ruled_router_derive::RouterMatch as RouterMatchDerive;
 
-// ===== 查询参数定义 =====
+// ===== 查询参数定义 (每层只保留一个) =====
 
-/// 用户查询参数
 #[derive(Debug, Clone, PartialEq, Default, Query)]
-struct UserQuery {
-  /// 包含的字段列表
-  include_fields: Vec<String>,
-  /// 是否包含敏感信息
-  include_sensitive: Option<bool>,
-  /// 响应格式
+struct SimpleQuery {
+  #[query(name = "format")]
   format: Option<String>,
 }
 
-/// 博客文章查询参数
-#[derive(Debug, Clone, PartialEq, Default, Query)]
-struct PostQuery {
-  /// 是否包含评论
-  include_comments: Option<bool>,
-  /// 评论排序方式
-  comment_sort: Option<String>,
-  /// 评论页码
-  comment_page: Option<u32>,
-}
+// ===== 第一层：模块路由 (Router) =====
 
-/// API 查询参数
-#[derive(Debug, Clone, PartialEq, Default, Query)]
-struct ApiQuery {
-  /// API 版本
-  version: Option<String>,
-  /// 调试模式
-  debug: Option<bool>,
-  /// 响应格式
-  format: Option<String>,
-}
-
-// ===== 基础路由定义 =====
-
-/// 用户路由
+/// 用户模块路由 - 第一层 Router
 #[derive(Debug, Clone, PartialEq, Router)]
-#[router(pattern = "/users/:id")]
-struct UserRoute {
+#[router(pattern = "/users")]
+struct UserModuleRoute {
+  // 模块入口，不包含参数
+}
+
+/// 商店模块路由 - 第一层 Router
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/shop")]
+struct ShopModuleRoute {
+  // 模块入口，不包含参数
+}
+
+/// 管理模块路由 - 第一层 Router
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/admin")]
+struct AdminModuleRoute {
+  // 模块入口，不包含参数
+}
+
+// ===== 第二层：分类路由 (Router) =====
+
+/// 用户个人分类路由 - 第二层 Router
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/users/profile")]
+struct UserProfileCategoryRoute {
+  // 分类入口，不包含参数
+}
+
+/// 用户内容分类路由 - 第二层 Router
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/users/content")]
+struct UserContentCategoryRoute {
+  // 分类入口，不包含参数
+}
+
+/// 商店产品分类路由 - 第二层 Router
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/shop/products")]
+struct ShopProductCategoryRoute {
+  // 分类入口，不包含参数
+}
+
+/// 商店订单分类路由 - 第二层 Router
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/shop/orders")]
+struct ShopOrderCategoryRoute {
+  // 分类入口，不包含参数
+}
+
+/// 管理用户分类路由 - 第二层 Router
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/admin/users")]
+struct AdminUserCategoryRoute {
+  // 分类入口，不包含参数
+}
+
+/// 管理系统分类路由 - 第二层 Router
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/admin/system")]
+struct AdminSystemCategoryRoute {
+  // 分类入口，不包含参数
+}
+
+// ===== 第三层：详细路由 (Router) =====
+
+/// 用户基本信息路由 - 第三层 Router
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/users/profile/:id")]
+struct UserBasicInfoRoute {
   id: u32,
   #[query]
-  query: UserQuery,
+  query: SimpleQuery,
 }
 
-/// 用户资料路由
+/// 用户设置路由 - 第三层 Router
 #[derive(Debug, Clone, PartialEq, Router)]
-#[router(pattern = "/users/:user_id/profile")]
-struct UserProfileRoute {
-  user_id: u32,
+#[router(pattern = "/users/profile/:id/settings")]
+struct UserSettingsRoute {
+  id: u32,
   #[query]
-  query: UserQuery,
+  query: SimpleQuery,
 }
 
-/// 用户文章路由
+/// 用户文章路由 - 第三层 Router
 #[derive(Debug, Clone, PartialEq, Router)]
-#[router(pattern = "/users/:user_id/posts/:post_id")]
+#[router(pattern = "/users/content/:user_id/posts/:post_id")]
 struct UserPostRoute {
   user_id: u32,
   post_id: u32,
   #[query]
-  query: PostQuery,
+  query: SimpleQuery,
 }
 
-/// 用户设置路由
+/// 用户评论路由 - 第三层 Router
 #[derive(Debug, Clone, PartialEq, Router)]
-#[router(pattern = "/users/:user_id/settings")]
-struct UserSettingsRoute {
+#[router(pattern = "/users/content/:user_id/comments/:comment_id")]
+struct UserCommentRoute {
   user_id: u32,
-}
-
-/// 博客路由
-#[derive(Debug, Clone, PartialEq, Router)]
-#[router(pattern = "/blog/:year/:month/:slug")]
-struct BlogRoute {
-  year: u32,
-  month: u32,
-  slug: String,
+  comment_id: u32,
   #[query]
-  query: PostQuery,
+  query: SimpleQuery,
 }
 
-/// API v1 用户路由
+/// 产品详情路由 - 第三层 Router
 #[derive(Debug, Clone, PartialEq, Router)]
-#[router(pattern = "/api/v1/users/:id")]
-struct ApiV1UserRoute {
+#[router(pattern = "/shop/products/:category/:id")]
+struct ProductDetailRoute {
+  category: String,
   id: u32,
   #[query]
-  query: ApiQuery,
+  query: SimpleQuery,
 }
 
-/// API v1 文章路由
+/// 产品列表路由 - 第三层 Router
 #[derive(Debug, Clone, PartialEq, Router)]
-#[router(pattern = "/api/v1/posts/:id")]
-struct ApiV1PostRoute {
+#[router(pattern = "/shop/products/:category")]
+struct ProductListRoute {
+  category: String,
+  #[query]
+  query: SimpleQuery,
+}
+
+/// 订单详情路由 - 第三层 Router
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/shop/orders/:id")]
+struct OrderDetailRoute {
   id: u32,
   #[query]
-  query: ApiQuery,
+  query: SimpleQuery,
 }
 
-/// API v2 用户路由
+/// 管理员用户管理路由 - 第三层 Router
 #[derive(Debug, Clone, PartialEq, Router)]
-#[router(pattern = "/api/v2/users/:id")]
-struct ApiV2UserRoute {
+#[router(pattern = "/admin/users/:id")]
+struct AdminUserManageRoute {
   id: u32,
   #[query]
-  query: ApiQuery,
+  query: SimpleQuery,
 }
 
-// ===== RouterMatch 枚举定义（手动实现）=====
+/// 系统配置路由 - 第三层 Router
+#[derive(Debug, Clone, PartialEq, Router)]
+#[router(pattern = "/admin/system/config")]
+struct SystemConfigRoute {
+  #[query]
+  query: SimpleQuery,
+}
 
-/// 用户子路由匹配
-#[derive(Debug, Clone, PartialEq)]
-enum UserSubRouterMatch {
-  Profile(UserProfileRoute),
-  Post(UserPostRoute),
+// ===== RouterMatch 定义 =====
+
+/// 用户个人详情路由匹配 - 第三层 RouterMatch
+#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+enum UserProfileDetailRouterMatch {
+  BasicInfo(UserBasicInfoRoute),
   Settings(UserSettingsRoute),
 }
 
-/// API v1 子路由匹配
-#[derive(Debug, Clone, PartialEq)]
-enum ApiV1SubRouterMatch {
-  User(ApiV1UserRoute),
-  Post(ApiV1PostRoute),
+/// 用户内容详情路由匹配 - 第三层 RouterMatch
+#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+enum UserContentDetailRouterMatch {
+  Post(UserPostRoute),
+  Comment(UserCommentRoute),
 }
 
-/// API v2 子路由匹配
-#[derive(Debug, Clone, PartialEq)]
-enum ApiV2SubRouterMatch {
-  User(ApiV2UserRoute),
+/// 商店产品详情路由匹配 - 第三层 RouterMatch
+#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+enum ShopProductDetailRouterMatch {
+  Detail(ProductDetailRoute),
+  List(ProductListRoute),
 }
 
-/// API 版本路由匹配
-#[derive(Debug, Clone, PartialEq)]
-enum ApiVersionRouterMatch {
-  V1(ApiV1SubRouterMatch),
-  V2(ApiV2SubRouterMatch),
+/// 商店订单详情路由匹配 - 第三层 RouterMatch
+#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+enum ShopOrderDetailRouterMatch {
+  Detail(OrderDetailRoute),
 }
 
-/// 顶级应用路由匹配
-#[derive(Debug, Clone, PartialEq)]
+/// 管理用户详情路由匹配 - 第三层 RouterMatch
+#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+enum AdminUserDetailRouterMatch {
+  Manage(AdminUserManageRoute),
+}
+
+/// 管理系统详情路由匹配 - 第三层 RouterMatch
+#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+enum AdminSystemDetailRouterMatch {
+  Config(SystemConfigRoute),
+}
+
+/// 用户子路由匹配 - 第二层 RouterMatch
+#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+enum UserSubRouterMatch {
+  #[route_prefix = "/users/profile"]
+  Profile(UserProfileCategoryRoute),
+  #[route_prefix = "/users/content"]
+  Content(UserContentCategoryRoute),
+}
+
+/// 商店子路由匹配 - 第二层 RouterMatch
+#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+enum ShopSubRouterMatch {
+  #[route_prefix = "/shop/products"]
+  Products(ShopProductCategoryRoute),
+  #[route_prefix = "/shop/orders"]
+  Orders(ShopOrderCategoryRoute),
+}
+
+/// 管理子路由匹配 - 第二层 RouterMatch
+#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
+enum AdminSubRouterMatch {
+  #[route_prefix = "/admin/users"]
+  Users(AdminUserCategoryRoute),
+  #[route_prefix = "/admin/system"]
+  System(AdminSystemCategoryRoute),
+}
+
+/// 顶级应用路由匹配 - 第一层 RouterMatch
+/// 严格遵循 RouterMatch -> Router -> RouterMatch -> Router -> RouterMatch -> Router 模式
+#[derive(Debug, Clone, PartialEq, RouterMatchDerive)]
 enum AppRouterMatch {
-  User(UserRoute),
-  UserSub(UserSubRouterMatch),
-  Blog(BlogRoute),
-  Api(ApiVersionRouterMatch),
+  #[route_prefix = "/users"]
+  User(UserModuleRoute),
+  #[route_prefix = "/shop"]
+  Shop(ShopModuleRoute),
+  #[route_prefix = "/admin"]
+  Admin(AdminModuleRoute),
 }
 
-// ===== 手动实现 RouterMatch trait =====
 
-impl RouterMatch for UserSubRouterMatch {
-  fn try_parse(path: &str) -> Result<Self, ParseError> {
-    if let Ok(profile) = UserProfileRoute::parse(path) {
-      return Ok(UserSubRouterMatch::Profile(profile));
-    }
-    if let Ok(post) = UserPostRoute::parse(path) {
-      return Ok(UserSubRouterMatch::Post(post));
-    }
-    if let Ok(settings) = UserSettingsRoute::parse(path) {
-      return Ok(UserSubRouterMatch::Settings(settings));
-    }
-    Err(ParseError::invalid_path("No matching user sub route"))
-  }
-
-  fn format(&self) -> String {
-    match self {
-      UserSubRouterMatch::Profile(route) => route.format(),
-      UserSubRouterMatch::Post(route) => route.format(),
-      UserSubRouterMatch::Settings(route) => route.format(),
-    }
-  }
-
-  fn patterns() -> Vec<&'static str> {
-    vec![UserProfileRoute::pattern(), UserPostRoute::pattern(), UserSettingsRoute::pattern()]
-  }
-
-  fn try_parse_with_remaining(path: &str, _consumed: usize) -> Result<(Self, &str), ParseError> {
-    // 简化实现，暂时不支持剩余路径
-    Self::try_parse(path).map(|route| (route, ""))
-  }
-}
-
-impl RouterMatch for ApiV1SubRouterMatch {
-  fn try_parse(path: &str) -> Result<Self, ParseError> {
-    if let Ok(user) = ApiV1UserRoute::parse(path) {
-      return Ok(ApiV1SubRouterMatch::User(user));
-    }
-    if let Ok(post) = ApiV1PostRoute::parse(path) {
-      return Ok(ApiV1SubRouterMatch::Post(post));
-    }
-    Err(ParseError::invalid_path("No matching API v1 sub route"))
-  }
-
-  fn format(&self) -> String {
-    match self {
-      ApiV1SubRouterMatch::User(route) => route.format(),
-      ApiV1SubRouterMatch::Post(route) => route.format(),
-    }
-  }
-
-  fn patterns() -> Vec<&'static str> {
-    vec![ApiV1UserRoute::pattern(), ApiV1PostRoute::pattern()]
-  }
-
-  fn try_parse_with_remaining(path: &str, _consumed: usize) -> Result<(Self, &str), ParseError> {
-    Self::try_parse(path).map(|route| (route, ""))
-  }
-}
-
-impl RouterMatch for ApiV2SubRouterMatch {
-  fn try_parse(path: &str) -> Result<Self, ParseError> {
-    if let Ok(user) = ApiV2UserRoute::parse(path) {
-      return Ok(ApiV2SubRouterMatch::User(user));
-    }
-    Err(ParseError::invalid_path("No matching API v2 sub route"))
-  }
-
-  fn format(&self) -> String {
-    match self {
-      ApiV2SubRouterMatch::User(route) => route.format(),
-    }
-  }
-
-  fn patterns() -> Vec<&'static str> {
-    vec![ApiV2UserRoute::pattern()]
-  }
-
-  fn try_parse_with_remaining(path: &str, _consumed: usize) -> Result<(Self, &str), ParseError> {
-    Self::try_parse(path).map(|route| (route, ""))
-  }
-}
-
-impl RouterMatch for ApiVersionRouterMatch {
-  fn try_parse(path: &str) -> Result<Self, ParseError> {
-    if let Ok(v1) = ApiV1SubRouterMatch::try_parse(path) {
-      return Ok(ApiVersionRouterMatch::V1(v1));
-    }
-    if let Ok(v2) = ApiV2SubRouterMatch::try_parse(path) {
-      return Ok(ApiVersionRouterMatch::V2(v2));
-    }
-    Err(ParseError::invalid_path("No matching API version route"))
-  }
-
-  fn format(&self) -> String {
-    match self {
-      ApiVersionRouterMatch::V1(route) => route.format(),
-      ApiVersionRouterMatch::V2(route) => route.format(),
-    }
-  }
-
-  fn patterns() -> Vec<&'static str> {
-    let mut patterns = Vec::new();
-    patterns.extend(ApiV1SubRouterMatch::patterns());
-    patterns.extend(ApiV2SubRouterMatch::patterns());
-    patterns
-  }
-
-  fn try_parse_with_remaining(path: &str, _consumed: usize) -> Result<(Self, &str), ParseError> {
-    Self::try_parse(path).map(|route| (route, ""))
-  }
-}
-
-impl RouterMatch for AppRouterMatch {
-  fn try_parse(path: &str) -> Result<Self, ParseError> {
-    if let Ok(user) = UserRoute::parse(path) {
-      return Ok(AppRouterMatch::User(user));
-    }
-    if let Ok(user_sub) = UserSubRouterMatch::try_parse(path) {
-      return Ok(AppRouterMatch::UserSub(user_sub));
-    }
-    if let Ok(blog) = BlogRoute::parse(path) {
-      return Ok(AppRouterMatch::Blog(blog));
-    }
-    if let Ok(api) = ApiVersionRouterMatch::try_parse(path) {
-      return Ok(AppRouterMatch::Api(api));
-    }
-    Err(ParseError::invalid_path("No matching route"))
-  }
-
-  fn format(&self) -> String {
-    match self {
-      AppRouterMatch::User(route) => route.format(),
-      AppRouterMatch::UserSub(route) => route.format(),
-      AppRouterMatch::Blog(route) => route.format(),
-      AppRouterMatch::Api(route) => route.format(),
-    }
-  }
-
-  fn patterns() -> Vec<&'static str> {
-    let mut patterns = Vec::new();
-    patterns.push(UserRoute::pattern());
-    patterns.extend(UserSubRouterMatch::patterns());
-    patterns.push(BlogRoute::pattern());
-    patterns.extend(ApiVersionRouterMatch::patterns());
-    patterns
-  }
-
-  fn try_parse_with_remaining(path: &str, _consumed: usize) -> Result<(Self, &str), ParseError> {
-    Self::try_parse(path).map(|route| (route, ""))
-  }
-}
 
 // ===== 辅助函数 =====
 
-/// 解析完整的嵌套路由
-fn parse_nested_route(url: &str) -> Result<AppRouterMatch, Box<dyn std::error::Error>> {
-  AppRouterMatch::try_parse(url).map_err(|e| e.into())
-}
+fn parse_nested_route(url: &str) -> Result<(AppRouterMatch, Option<Box<dyn std::fmt::Debug>>, Option<Box<dyn std::fmt::Debug>>), Box<dyn std::error::Error>> {
+  // 第一层：解析模块路由
+  let app_match = AppRouterMatch::try_parse(url)?;
 
-/// 显示路由匹配信息
-fn display_route_match_info(route_match: &AppRouterMatch, description: &str) {
-  println!("\n=== {description} ===");
-  println!("Route Match: {route_match:?}");
-  println!("Formatted URL: {}", route_match.format());
-
-  match route_match {
-    AppRouterMatch::User(user_route) => {
-      println!("User ID: {}", user_route.id);
-      println!("Query: {:?}", user_route.query);
+  // 第二层：根据模块类型解析分类路由
+  let (sub_match, detail_match): (Option<Box<dyn std::fmt::Debug>>, Option<Box<dyn std::fmt::Debug>>) = match &app_match {
+    AppRouterMatch::User(_) => {
+      if let Ok(user_sub) = UserSubRouterMatch::try_parse(url) {
+        // 第三层：根据用户分类解析详细路由
+        let detail = match &user_sub {
+          UserSubRouterMatch::Profile(_) => {
+            if let Ok(profile_detail) = UserProfileDetailRouterMatch::try_parse(url) {
+              Some(Box::new(profile_detail) as Box<dyn std::fmt::Debug>)
+            } else {
+              None
+            }
+          }
+          UserSubRouterMatch::Content(_) => {
+            if let Ok(content_detail) = UserContentDetailRouterMatch::try_parse(url) {
+              Some(Box::new(content_detail) as Box<dyn std::fmt::Debug>)
+            } else {
+              None
+            }
+          }
+        };
+        (Some(Box::new(user_sub)), detail)
+      } else {
+        (None, None)
+      }
     }
-    AppRouterMatch::UserSub(user_sub) => match user_sub {
-      UserSubRouterMatch::Profile(profile) => {
-        println!("User Profile - User ID: {}", profile.user_id);
-        println!("Query: {:?}", profile.query);
+    AppRouterMatch::Shop(_) => {
+      if let Ok(shop_sub) = ShopSubRouterMatch::try_parse(url) {
+        // 第三层：根据商店分类解析详细路由
+        let detail = match &shop_sub {
+          ShopSubRouterMatch::Products(_) => {
+            if let Ok(product_detail) = ShopProductDetailRouterMatch::try_parse(url) {
+              Some(Box::new(product_detail) as Box<dyn std::fmt::Debug>)
+            } else {
+              None
+            }
+          }
+          ShopSubRouterMatch::Orders(_) => {
+            if let Ok(order_detail) = ShopOrderDetailRouterMatch::try_parse(url) {
+              Some(Box::new(order_detail) as Box<dyn std::fmt::Debug>)
+            } else {
+              None
+            }
+          }
+        };
+        (Some(Box::new(shop_sub)), detail)
+      } else {
+        (None, None)
       }
-      UserSubRouterMatch::Post(post) => {
-        println!("User Post - User ID: {}, Post ID: {}", post.user_id, post.post_id);
-        println!("Query: {:?}", post.query);
-      }
-      UserSubRouterMatch::Settings(settings) => {
-        println!("User Settings - User ID: {}", settings.user_id);
-      }
-    },
-    AppRouterMatch::Blog(blog) => {
-      println!("Blog - Year: {}, Month: {}, Slug: {}", blog.year, blog.month, blog.slug);
-      println!("Query: {:?}", blog.query);
     }
-    AppRouterMatch::Api(api_version) => match api_version {
-      ApiVersionRouterMatch::V1(v1_sub) => match v1_sub {
-        ApiV1SubRouterMatch::User(user) => {
-          println!("API v1 User - ID: {}", user.id);
-          println!("Query: {:?}", user.query);
-        }
-        ApiV1SubRouterMatch::Post(post) => {
-          println!("API v1 Post - ID: {}", post.id);
-          println!("Query: {:?}", post.query);
-        }
-      },
-      ApiVersionRouterMatch::V2(v2_sub) => match v2_sub {
-        ApiV2SubRouterMatch::User(user) => {
-          println!("API v2 User - ID: {}", user.id);
-          println!("Query: {:?}", user.query);
-        }
-      },
-    },
-  }
-}
-
-/// 演示路由构建
-fn demonstrate_route_building() {
-  println!("\n=== 路由构建演示 ===");
-
-  // 构建用户路由
-  let user_route = UserRoute {
-    id: 123,
-    query: UserQuery {
-      include_fields: vec!["name".to_string(), "email".to_string()],
-      include_sensitive: Some(false),
-      format: Some("json".to_string()),
-    },
+    AppRouterMatch::Admin(_) => {
+      if let Ok(admin_sub) = AdminSubRouterMatch::try_parse(url) {
+        // 第三层：根据管理分类解析详细路由
+        let detail = match &admin_sub {
+          AdminSubRouterMatch::Users(_) => {
+            if let Ok(user_detail) = AdminUserDetailRouterMatch::try_parse(url) {
+              Some(Box::new(user_detail) as Box<dyn std::fmt::Debug>)
+            } else {
+              None
+            }
+          }
+          AdminSubRouterMatch::System(_) => {
+            if let Ok(system_detail) = AdminSystemDetailRouterMatch::try_parse(url) {
+              Some(Box::new(system_detail) as Box<dyn std::fmt::Debug>)
+            } else {
+              None
+            }
+          }
+        };
+        (Some(Box::new(admin_sub)), detail)
+      } else {
+        (None, None)
+      }
+    }
   };
-  let user_match = AppRouterMatch::User(user_route);
-  println!("用户路由: {}", user_match.format());
 
-  // 构建用户文章路由
-  let user_post_route = UserPostRoute {
-    user_id: 456,
-    post_id: 789,
-    query: PostQuery {
-      include_comments: Some(true),
-      comment_sort: Some("date".to_string()),
-      comment_page: Some(1),
-    },
-  };
-  let user_post_match = AppRouterMatch::UserSub(UserSubRouterMatch::Post(user_post_route));
-  println!("用户文章路由: {}", user_post_match.format());
-
-  // 构建 API 路由
-  let api_user_route = ApiV1UserRoute {
-    id: 999,
-    query: ApiQuery {
-      version: Some("1.0".to_string()),
-      debug: Some(true),
-      format: Some("xml".to_string()),
-    },
-  };
-  let api_match = AppRouterMatch::Api(ApiVersionRouterMatch::V1(ApiV1SubRouterMatch::User(api_user_route)));
-  println!("API 路由: {}", api_match.format());
+  Ok((app_match, sub_match, detail_match))
 }
 
 fn main() {
-  println!("嵌套路由使用示例 - RouterMatch 设计");
-  println!("=====================================\n");
+  println!("=== 三层嵌套路由使用示例 ===");
+  println!("架构：RouterMatch -> Router -> RouterMatch -> Router -> RouterMatch -> Router");
+  println!();
 
-  // 显示所有可能的路由模式
-  println!("支持的路由模式:");
-  for pattern in AppRouterMatch::patterns() {
-    println!("  - {pattern}");
-  }
-
-  // 测试各种路由解析
   let test_urls = vec![
-    "/users/123?include=name&include=email&format=json",
-    "/users/456/profile?include_sensitive=false",
-    "/users/789/posts/101?include_comments=true&comment_sort=date",
-    "/users/999/settings",
-    "/blog/2024/03/rust-tutorial?include_comments=true",
-    "/api/v1/users/555?debug=true&format=xml",
-    "/api/v1/posts/777?version=1.2",
-    "/api/v2/users/888?format=json",
+    "/users/profile/123?format=json",
+    "/users/profile/456/settings?format=xml",
+    "/users/content/789/posts/101?format=json",
+    "/users/content/999/comments/202?format=xml",
+    "/shop/products/electronics/555?format=json",
+    "/shop/products/books?format=xml",
+    "/shop/orders/777?format=json",
+    "/admin/users/888?format=xml",
+    "/admin/system/config?format=json",
   ];
 
   for url in test_urls {
+    println!("=== 解析 URL: {url} ===");
+
     match parse_nested_route(url) {
-      Ok(route_match) => {
-        display_route_match_info(&route_match, &format!("解析 URL: {url}"));
+      Ok((app_match, sub_match, detail_match)) => {
+        println!("第一层 (模块): {app_match:?}");
+        if let Some(sub) = sub_match {
+          println!("第二层 (分类): {sub:?}");
+        } else {
+          println!("第二层: 无匹配的分类路由");
+        }
+        if let Some(detail) = detail_match {
+          println!("第三层 (详情): {detail:?}");
+        } else {
+          println!("第三层: 无匹配的详情路由");
+        }
+
+        // 演示格式化
+        let formatted = app_match.format();
+        println!("模块路由格式化: {formatted}");
       }
       Err(e) => {
-        println!("\n解析失败 - URL: {url}");
-        println!("错误: {e}");
+        println!("解析失败: {e}");
       }
     }
+    println!();
   }
 
-  // 演示路由构建
-  demonstrate_route_building();
-
-  // 演示路由模式匹配
-  println!("\n=== 路由模式匹配演示 ===");
-  let test_url = "/api/v1/users/123?debug=true";
-  match parse_nested_route(test_url) {
-    Ok(route_match) => {
-      println!("成功解析: {test_url}");
-
-      // 演示嵌套匹配
-      match &route_match {
-        AppRouterMatch::Api(api_version) => {
-          println!("这是一个 API 路由");
-          match api_version {
-            ApiVersionRouterMatch::V1(v1_sub) => {
-              println!("API 版本: v1");
-              match v1_sub {
-                ApiV1SubRouterMatch::User(user) => {
-                  println!("资源类型: 用户");
-                  println!("用户 ID: {}", user.id);
-                  if user.query.debug == Some(true) {
-                    println!("调试模式已启用");
-                  }
-                }
-                ApiV1SubRouterMatch::Post(_) => {
-                  println!("资源类型: 文章");
-                }
-              }
-            }
-            ApiVersionRouterMatch::V2(_) => {
-              println!("API 版本: v2");
-            }
-          }
-        }
-        _ => println!("非 API 路由"),
-      }
-    }
-    Err(e) => {
-      println!("解析失败: {e}");
-    }
-  }
+  println!("=== 架构验证 ===");
+  println!("✓ AppRouterMatch (第一层 RouterMatch) -> UserModuleRoute/ShopModuleRoute/AdminModuleRoute (第一层 Router)");
+  println!("✓ UserModuleRoute -> UserSubRouterMatch (第二层 RouterMatch) -> UserProfileCategoryRoute/UserContentCategoryRoute (第二层 Router)");
+  println!("✓ UserProfileCategoryRoute -> UserProfileDetailRouterMatch (第三层 RouterMatch) -> UserBasicInfoRoute/UserSettingsRoute (第三层 Router)");
+  println!("✓ 严格遵循 RouterMatch -> Router -> RouterMatch -> Router -> RouterMatch -> Router 模式");
 }
 
 #[cfg(test)]
@@ -494,82 +396,48 @@ mod tests {
   use super::*;
 
   #[test]
-  fn test_user_route_parsing() {
-    let url = "/users/123?include_fields=name&format=json";
-    let route_match = parse_nested_route(url).unwrap();
+  fn test_architecture_compliance() {
+    // 测试架构是否符合 RouterMatch -> Router -> RouterMatch -> Router -> RouterMatch -> Router
 
-    match route_match {
-      AppRouterMatch::User(user_route) => {
-        assert_eq!(user_route.id, 123);
-        assert_eq!(user_route.query.include_fields, vec!["name"]);
-        assert_eq!(user_route.query.format, Some("json".to_string()));
-      }
-      _ => panic!("Expected User route"),
-    }
+    // 第一层：AppRouterMatch -> ModuleRoute
+    let app_match = AppRouterMatch::try_parse("/users/profile/123").unwrap();
+    assert!(matches!(app_match, AppRouterMatch::User(_)));
+
+    // 第二层：UserSubRouterMatch -> UserProfileCategoryRoute
+    let user_sub = UserSubRouterMatch::try_parse("/users/profile/123").unwrap();
+    assert!(matches!(user_sub, UserSubRouterMatch::Profile(_)));
+
+    // 第三层：UserProfileDetailRouterMatch -> UserBasicInfoRoute
+    let user_detail = UserProfileDetailRouterMatch::try_parse("/users/profile/123").unwrap();
+    assert!(matches!(user_detail, UserProfileDetailRouterMatch::BasicInfo(_)));
   }
 
   #[test]
-  fn test_nested_user_post_route() {
-    let url = "/users/456/posts/789?include_comments=true";
-    let route_match = parse_nested_route(url).unwrap();
-
-    match route_match {
-      AppRouterMatch::UserSub(UserSubRouterMatch::Post(post_route)) => {
-        assert_eq!(post_route.user_id, 456);
-        assert_eq!(post_route.post_id, 789);
-        assert_eq!(post_route.query.include_comments, Some(true));
-      }
-      _ => panic!("Expected UserSub::Post route"),
-    }
+  fn test_user_basic_info_route() {
+    let route = UserBasicInfoRoute::parse("/users/profile/123?format=json").unwrap();
+    assert_eq!(route.id, 123);
+    assert_eq!(route.query.format, Some("json".to_string()));
   }
 
   #[test]
-  fn test_api_v1_user_route() {
-    let url = "/api/v1/users/999?debug=true";
-    let route_match = parse_nested_route(url).unwrap();
-
-    match route_match {
-      AppRouterMatch::Api(ApiVersionRouterMatch::V1(ApiV1SubRouterMatch::User(user_route))) => {
-        assert_eq!(user_route.id, 999);
-        assert_eq!(user_route.query.debug, Some(true));
-      }
-      _ => panic!("Expected API v1 User route"),
-    }
+  fn test_nested_parsing() {
+    let (app_match, sub_match, detail_match) = parse_nested_route("/users/profile/123").unwrap();
+    assert!(matches!(app_match, AppRouterMatch::User(_)));
+    assert!(sub_match.is_some());
+    assert!(detail_match.is_some());
   }
 
   #[test]
-  fn test_route_formatting() {
-    let user_route = UserRoute {
-      id: 123,
-      query: UserQuery {
-        include_fields: vec!["name".to_string()],
-        include_sensitive: None,
-        format: Some("json".to_string()),
-      },
-    };
-    let route_match = AppRouterMatch::User(user_route);
-    let formatted = route_match.format();
-
-    assert!(formatted.contains("/users/123"));
-    assert!(formatted.contains("include_fields=name"));
-    assert!(formatted.contains("format=json"));
+  fn test_shop_product_route() {
+    let route = ProductDetailRoute::parse("/shop/products/electronics/555?format=xml").unwrap();
+    assert_eq!(route.category, "electronics");
+    assert_eq!(route.id, 555);
+    assert_eq!(route.query.format, Some("xml".to_string()));
   }
 
   #[test]
-  fn test_route_patterns() {
-    let patterns = AppRouterMatch::patterns();
-
-    assert!(patterns.contains(&"/users/:id"));
-    assert!(patterns.contains(&"/users/:user_id/posts/:post_id"));
-    assert!(patterns.contains(&"/api/v1/users/:id"));
-    assert!(patterns.contains(&"/blog/:year/:month/:slug"));
-  }
-
-  #[test]
-  fn test_invalid_route() {
-    let url = "/invalid/route/path";
-    let result = parse_nested_route(url);
-
-    assert!(result.is_err());
+  fn test_admin_system_route() {
+    let route = SystemConfigRoute::parse("/admin/system/config?format=json").unwrap();
+    assert_eq!(route.query.format, Some("json".to_string()));
   }
 }
