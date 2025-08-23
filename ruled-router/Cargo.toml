@@ -1,6 +1,6 @@
 [package]
 name = "ruled-router"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 authors = ["Your Name <your.email@example.com>"]
 license = "MIT OR Apache-2.0"
@@ -11,7 +11,7 @@ categories = ["web-programming", "network-programming"]
 readme = "../README.md"
 
 [dependencies]
-ruled-router-derive = { version = "0.0.1", path = "../ruled-router-derive", optional = true }
+ruled-router-derive = { version = "0.0.2", path = "../ruled-router-derive", optional = true }
 
 [features]
 default = ["derive"]

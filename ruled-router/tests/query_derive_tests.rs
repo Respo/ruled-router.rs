@@ -83,6 +83,28 @@ struct CustomFieldQuery {
   sort_by: Option<String>,
 }
 
+/// 带默认值的查询参数测试
+#[derive(Debug, Clone, PartialEq, Query)]
+struct DefaultValueQuery {
+  #[query(name = "page", default = "1")]
+  page: u32,
+
+  #[query(name = "limit", default = "20")]
+  limit: u32,
+
+  #[query(name = "active", default = "true")]
+  active: bool,
+
+  #[query(name = "sort", default = "created_at")]
+  sort: String,
+
+  #[query(name = "search")]
+  search: Option<String>,
+
+  #[query(name = "tags")]
+  tags: Vec<String>,
+}
+
 /// 嵌套查询参数测试
 #[derive(Debug, Clone, PartialEq, Default, Query)]
 struct NestedQuery {
@@ -393,5 +415,83 @@ mod tests {
     assert!(formatted.contains("tag=web"));
     assert!(formatted.contains("active=true"));
     assert!(formatted.contains("min_price=10.5"));
+  }
+
+  #[test]
+  fn test_default_values_all_defaults() {
+    // 测试所有字段都使用默认值的情况
+    let query = DefaultValueQuery::parse("").unwrap();
+
+    assert_eq!(query.page, 1);
+    assert_eq!(query.limit, 20);
+    assert!(query.active);
+    assert_eq!(query.sort, "created_at");
+    assert_eq!(query.search, None);
+    assert!(query.tags.is_empty());
+  }
+
+  #[test]
+  fn test_default_values_partial_override() {
+    // 测试部分覆盖默认值的情况
+    let query = DefaultValueQuery::parse("page=5&search=rust").unwrap();
+
+    assert_eq!(query.page, 5); // 覆盖默认值
+    assert_eq!(query.limit, 20); // 使用默认值
+    assert!(query.active); // 使用默认值
+    assert_eq!(query.sort, "created_at"); // 使用默认值
+    assert_eq!(query.search, Some("rust".to_string())); // 设置可选值
+    assert!(query.tags.is_empty());
+  }
+
+  #[test]
+  fn test_default_values_all_override() {
+    // 测试所有字段都覆盖默认值的情况
+    let query = DefaultValueQuery::parse("page=3&limit=50&active=false&sort=updated_at&search=test&tags=web&tags=rust").unwrap();
+
+    assert_eq!(query.page, 3);
+    assert_eq!(query.limit, 50);
+    assert!(!query.active);
+    assert_eq!(query.sort, "updated_at");
+    assert_eq!(query.search, Some("test".to_string()));
+    assert_eq!(query.tags, vec!["web", "rust"]);
+  }
+
+  #[test]
+  fn test_default_values_formatting() {
+    // 测试默认值的格式化
+    let query = DefaultValueQuery {
+      page: 1,
+      limit: 20,
+      active: true,
+      sort: "created_at".to_string(),
+      search: None,
+      tags: vec![],
+    };
+
+    let formatted = query.format();
+
+    // 验证格式化结果包含默认值
+    assert!(formatted.contains("page=1"));
+    assert!(formatted.contains("limit=20"));
+    assert!(formatted.contains("active=true"));
+    assert!(formatted.contains("sort=created_at"));
+  }
+
+  #[test]
+  fn test_default_values_roundtrip() {
+    // 测试默认值的往返一致性
+    let original = DefaultValueQuery {
+      page: 2,
+      limit: 30,
+      active: false,
+      sort: "name".to_string(),
+      search: Some("query".to_string()),
+      tags: vec!["tag1".to_string(), "tag2".to_string()],
+    };
+
+    let formatted = original.format();
+    let parsed = DefaultValueQuery::parse(&formatted).unwrap();
+
+    assert_eq!(original, parsed);
   }
 }
