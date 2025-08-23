@@ -27,36 +27,12 @@ fn extract_route_type(variant: &Variant) -> syn::Result<&syn::Type> {
   }
 }
 
-/// 提取变体的 route_prefix 属性
-fn extract_route_prefix(variant: &Variant) -> syn::Result<Option<String>> {
-  for attr in &variant.attrs {
-    if attr.path().is_ident("route_prefix") {
-      // 解析 #[route_prefix = "value"] 语法
-      if let syn::Meta::NameValue(meta_name_value) = &attr.meta {
-        if let syn::Expr::Lit(expr_lit) = &meta_name_value.value {
-          if let syn::Lit::Str(lit_str) = &expr_lit.lit {
-            return Ok(Some(lit_str.value()));
-          }
-        }
-      }
-      return Err(syn::Error::new_spanned(
-        attr,
-        "route_prefix must be a string literal in the format #[route_prefix = \"value\"]",
-      ));
-    } else if attr.path().is_ident("route") {
-      // 解析 #[route("value")] 语法
-      if let syn::Meta::List(meta_list) = &attr.meta {
-        if let Ok(lit_str) = meta_list.parse_args::<syn::LitStr>() {
-          return Ok(Some(lit_str.value()));
-        }
-      }
-      return Err(syn::Error::new_spanned(
-        attr,
-        "route must be a string literal in the format #[route(\"value\")]",
-      ));
-    }
-  }
-  Ok(None)
+/// 自动从路由结构体的 Router trait 实现中获取 pattern
+/// 不再支持手动指定 #[route] 或 #[route_prefix] 属性，完全依赖自动提取
+fn extract_route_prefix(variant: &Variant) -> syn::Result<Option<TokenStream>> {
+  // 直接从路由结构体的 Router trait 获取 pattern
+  let route_type = extract_route_type(variant)?;
+  Ok(Some(quote! { <#route_type as ::ruled_router::traits::Router>::pattern() }))
 }
 
 /// 生成 try_parse 方法的实现
@@ -69,41 +45,44 @@ fn generate_try_parse_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
     let route_type = extract_route_type(variant)?;
     let route_prefix = extract_route_prefix(variant)?;
 
-    let match_arm = if let Some(prefix) = route_prefix {
+    let match_arm = if let Some(prefix_expr) = route_prefix {
       // 如果有 route_prefix 或 route 属性，先检查前缀匹配，然后解析
       quote! {
-        if path.starts_with(#prefix) {
-          // 分离路径和查询参数
-          let (path_part, query_part) = ::ruled_router::utils::split_path_query(path);
+        {
+          let prefix = #prefix_expr;
+          if path.starts_with(prefix) {
+            // 分离路径和查询参数
+            let (path_part, query_part) = ::ruled_router::utils::split_path_query(path);
 
-          if path_part.starts_with(#prefix) {
-            // 构造完整的路径用于解析（前缀 + 查询参数）
-            let full_path = if let Some(query) = query_part {
-              format!("{}?{}", #prefix, query)
-            } else {
-              #prefix.to_string()
-            };
-
-            // 尝试使用 parse_with_sub 进行递归解析
-            if let Ok((route, sub_router)) = <#route_type as ::ruled_router::traits::Router>::parse_with_sub(path) {
-              // 如果有子路由，尝试创建包含子路由的路由实例
-              if let Some(_sub) = sub_router {
-                // 对于有子路由的情况，直接返回解析结果
-                // 子路由信息已经包含在 parse_with_sub 的结果中
-                return Ok(Self::#variant_name(route));
+            if path_part.starts_with(prefix) {
+              // 构造完整的路径用于解析（前缀 + 查询参数）
+              let full_path = if let Some(query) = query_part {
+                format!("{}?{}", prefix, query)
               } else {
+                prefix.to_string()
+              };
+
+              // 尝试使用 parse_with_sub 进行递归解析
+              if let Ok((route, sub_router)) = <#route_type as ::ruled_router::traits::Router>::parse_with_sub(path) {
+                // 如果有子路由，尝试创建包含子路由的路由实例
+                if let Some(_sub) = sub_router {
+                  // 对于有子路由的情况，直接返回解析结果
+                  // 子路由信息已经包含在 parse_with_sub 的结果中
+                  return Ok(Self::#variant_name(route));
+                } else {
+                  return Ok(Self::#variant_name(route));
+                }
+              }
+              // 如果递归解析失败，回退到普通解析
+              if let Ok(route) = <#route_type as ::ruled_router::traits::Router>::parse(&full_path) {
                 return Ok(Self::#variant_name(route));
               }
-            }
-            // 如果递归解析失败，回退到普通解析
-            if let Ok(route) = <#route_type as ::ruled_router::traits::Router>::parse(&full_path) {
-              return Ok(Self::#variant_name(route));
             }
           }
         }
       }
     } else {
-      // 没有 route_prefix 属性，尝试直接解析
+      // 这个分支现在不会被执行，因为我们总是返回 Some
       quote! {
         // 尝试使用 parse_with_sub 进行递归解析
           if let Ok((route, sub_router)) = <#route_type as ::ruled_router::traits::Router>::parse_with_sub(path) {

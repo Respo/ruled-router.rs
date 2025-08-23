@@ -276,10 +276,16 @@ pub trait Router: Sized {
   /// ```
   fn parse_recursive(path: &str) -> Result<NestedRouteResult<Self>, ParseError> {
     let (current, sub_match) = Self::parse_with_sub(path)?;
-
-    let sub_route_info = sub_match.map(|sub| Box::new(sub.to_route_info()));
-
-    Ok(NestedRouteResult { current, sub_route_info })
+    
+    let sub_route_info = match sub_match {
+      Some(sub) => Some(Box::new(sub.to_route_info())),
+      None => None,
+    };
+    
+    Ok(NestedRouteResult {
+      current,
+      sub_route_info,
+    })
   }
 
   /// 从完整路径自动解析多层嵌套路由
@@ -301,25 +307,28 @@ pub trait Router: Sized {
   /// let (result, remaining) = UserRoute::parse_from_full_path("/users/profile/basic/123")?;
   /// ```
   fn parse_from_full_path(full_path: &str) -> Result<(NestedRouteResult<Self>, &str), ParseError> {
-    // 使用现有的 consumed_length 方法来计算消费的路径长度
-    let consumed = Self::consumed_length(full_path)?;
-
-    // 构建当前层级的路径
-    let current_path = &full_path[..consumed];
-
-    // 解析当前层级
-    let (current, sub_match) = Self::parse_with_sub(current_path)?;
-
-    // 获取剩余路径
-    let remaining_path = &full_path[consumed..];
-
-    // 处理子路由信息
-    let sub_route_info = sub_match.map(|sub| Box::new(sub.to_route_info()));
-
-    let result = NestedRouteResult { current, sub_route_info };
-
-    Ok((result, remaining_path))
-  }
+     // 使用现有的 consumed_length 方法来计算消费的路径长度
+     let consumed = Self::consumed_length(full_path)?;
+     
+     // 构建当前层级的路径
+     let current_path = &full_path[..consumed];
+     
+     // 解析当前层级
+     let (current, sub_match) = Self::parse_with_sub(current_path)?;
+     
+     // 获取剩余路径
+     let remaining_path = &full_path[consumed..];
+     
+     // 处理子路由信息
+     let sub_route_info = sub_match.map(|sub| Box::new(sub.to_route_info()));
+     
+     let result = NestedRouteResult {
+       current,
+       sub_route_info,
+     };
+     
+     Ok((result, remaining_path))
+   }
 }
 
 /// 查询参数解析和格式化的 trait

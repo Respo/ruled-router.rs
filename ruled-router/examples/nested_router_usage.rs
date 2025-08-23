@@ -26,11 +26,8 @@ struct SimpleQuery {
 /// 严格遵循 RouteMatcher -> Router -> RouteMatcher -> Router -> RouteMatcher -> Router 模式
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum AppRouterMatch {
-  #[route("/users")]
   User(UserModuleRoute),
-  #[route("/shop")]
   Shop(ShopModuleRoute),
-  #[route("/admin")]
   Admin(AdminModuleRoute),
 }
 
@@ -79,27 +76,21 @@ struct AdminModuleRoute {
 /// 用户子路由匹配 - 第二层 RouteMatcher
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum UserSubRouterMatch {
-  #[route("/profile")]
   Profile(UserProfileCategoryRoute),
-  #[route("/content")]
   Content(UserContentCategoryRoute),
 }
 
 /// 商店子路由匹配器 - 第二层 RouterMatch
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum ShopSubRouterMatch {
-  #[route("/products")]
   Products(ShopProductCategoryRoute),
-  #[route("/orders")]
   Orders(ShopOrderCategoryRoute),
 }
 
 /// 管理员子路由匹配器 - 第二层 RouterMatch
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum AdminSubRouterMatch {
-  #[route("/users")]
   Users(AdminUserCategoryRoute),
-  #[route("/system")]
   System(AdminSystemCategoryRoute),
 }
 
@@ -170,48 +161,39 @@ struct AdminSystemCategoryRoute {
 /// 用户个人详情路由匹配 - 第四层 RouteMatcher
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum UserProfileDetailRouterMatch {
-  #[route("/basic")]
   BasicInfo(UserBasicInfoRoute),
-  #[route("/settings")]
   Settings(UserSettingsRoute),
 }
 
 /// 用户内容详情路由匹配 - 第四层 RouteMatcher
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum UserContentDetailRouterMatch {
-  #[route("/posts")]
   Post(UserPostRoute),
-  #[route("/comments")]
   Comment(UserCommentRoute),
 }
 
 /// 商店产品详情路由匹配 - 第四层 RouteMatcher
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum ShopProductDetailRouterMatch {
-  #[route("/detail")]
   Detail(ProductDetailRoute),
-  #[route("/list")]
   List(ProductListRoute),
 }
 
 /// 商店订单详情路由匹配 - 第四层 RouteMatcher
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum ShopOrderDetailRouterMatch {
-  #[route("/detail")]
   Detail(OrderDetailRoute),
 }
 
 /// 管理用户详情路由匹配 - 第四层 RouteMatcher
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum AdminUserDetailRouterMatch {
-  #[route("/manage")]
   Manage(AdminUserManageRoute),
 }
 
 /// 管理系统详情路由匹配 - 第四层 RouteMatcher
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum AdminSystemDetailRouterMatch {
-  #[route("/config")]
   Config(SystemConfigRoute),
 }
 

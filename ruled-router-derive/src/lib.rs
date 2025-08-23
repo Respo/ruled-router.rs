@@ -89,6 +89,9 @@ pub fn derive_querystring(input: TokenStream) -> TokenStream {
 
 /// Derive macro for implementing the RouterMatch trait
 ///
+/// This macro generates implementations for parsing and formatting
+/// nested router structures with automatic prefix extraction.
+///
 /// # Example
 ///
 /// ```rust,ignore
@@ -97,12 +100,12 @@ pub fn derive_querystring(input: TokenStream) -> TokenStream {
 ///
 /// #[derive(RouterMatch)]
 /// enum AppRouterMatch {
-///     User(UserRoute),
-///     Blog(BlogRoute),
+///     User(UserRoute),  // Automatically extracts prefix from UserRoute::pattern()
+///     Blog(BlogRoute),  // Automatically extracts prefix from BlogRoute::pattern()
 ///     Api(ApiRoute),
 /// }
 /// ```
-#[proc_macro_derive(RouterMatch, attributes(route, route_prefix))]
+#[proc_macro_derive(RouterMatch)]
 pub fn derive_router_match(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
   expand_router_match_derive(input)
