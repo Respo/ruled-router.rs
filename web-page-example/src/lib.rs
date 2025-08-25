@@ -18,37 +18,38 @@ use web_sys::{console, window, Event, HtmlElement, HtmlInputElement};
 /// 应用状态管理结构体
 #[derive(Debug, Clone)]
 struct AppState {
-  current_route: Option<AppRoute>,
+  current_route: AppRoute,
 }
 
 impl AppState {
   fn new() -> Self {
-    Self { current_route: None }
+    Self {
+      current_route: AppRoute::Home(HomeRoute {
+        query: SimpleQuery::default(),
+      }),
+    }
   }
 
   fn set_route(&mut self, route: AppRoute) {
-    self.current_route = Some(route);
+    self.current_route = route;
   }
 
-  fn get_route(&self) -> Option<&AppRoute> {
-    self.current_route.as_ref()
+  fn get_route(&self) -> &AppRoute {
+    &self.current_route
   }
 
   fn format_current_url(&self) -> String {
-    if let Some(route) = &self.current_route {
-      route.format()
-    } else {
-      "/".to_string()
-    }
+    self.current_route.format()
   }
 }
 
-/// 应用路由匹配器 - 顶层路由
+/// 应用路由匹配器 - 顶层路由 (第一层 RouteMatcher)
 #[derive(Debug, Clone, PartialEq, Serialize, RouterMatch)]
 enum AppRoute {
   Home(HomeRoute),
-  User(UserRoute),
-  BlogPost(BlogPostRoute),
+  User(UserModuleRoute),
+  Blog(BlogModuleRoute),
+  Admin(AdminModuleRoute),
   Search(SearchRoute),
 }
 
@@ -68,24 +69,34 @@ struct HomeRoute {
   query: SimpleQuery,
 }
 
-/// 用户路由
+/// 用户模块路由 - 第一层 Router
 #[derive(Debug, Clone, PartialEq, Serialize, Router)]
-#[router(pattern = "/users/:id")]
-struct UserRoute {
-  id: u32,
+#[router(pattern = "/users")]
+struct UserModuleRoute {
   #[query]
   query: SimpleQuery,
+  #[sub_router]
+  sub_router: Option<UserSubRouterMatch>,
 }
 
-/// 博客文章路由
+/// 博客模块路由 - 第一层 Router
 #[derive(Debug, Clone, PartialEq, Serialize, Router)]
-#[router(pattern = "/blog/:year/:month/:slug")]
-struct BlogPostRoute {
-  year: u32,
-  month: u32,
-  slug: String,
+#[router(pattern = "/blog")]
+struct BlogModuleRoute {
   #[query]
   query: SimpleQuery,
+  #[sub_router]
+  sub_router: Option<BlogSubRouterMatch>,
+}
+
+/// 管理模块路由 - 第一层 Router
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/admin")]
+struct AdminModuleRoute {
+  #[query]
+  query: SimpleQuery,
+  #[sub_router]
+  sub_router: Option<AdminSubRouterMatch>,
 }
 
 /// 搜索路由
@@ -94,6 +105,398 @@ struct BlogPostRoute {
 struct SearchRoute {
   #[query]
   query: SearchQuery,
+}
+
+// ===== 第二层：子路由匹配器 =====
+
+/// 用户子路由匹配器 - 第二层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, Serialize, RouterMatch)]
+enum UserSubRouterMatch {
+  Profile(UserProfileRoute),
+  Posts(UserPostsRoute),
+  Settings(UserSettingsRoute),
+}
+
+/// 博客子路由匹配器 - 第二层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, Serialize, RouterMatch)]
+enum BlogSubRouterMatch {
+  Posts(BlogPostsRoute),
+  Categories(BlogCategoriesRoute),
+  Archives(BlogArchivesRoute),
+}
+
+/// 管理子路由匹配器 - 第二层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, Serialize, RouterMatch)]
+enum AdminSubRouterMatch {
+  Users(AdminUsersRoute),
+  Content(AdminContentRoute),
+  System(AdminSystemRoute),
+}
+
+// ===== 第二层：子路由结构 =====
+
+/// 用户个人资料路由 - 第二层 Router
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/profile")]
+struct UserProfileRoute {
+  #[query]
+  query: SimpleQuery,
+  #[sub_router]
+  sub_router: Option<UserProfileDetailMatch>,
+}
+
+/// 用户文章路由 - 第二层 Router
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/posts")]
+struct UserPostsRoute {
+  #[query]
+  query: SimpleQuery,
+  #[sub_router]
+  sub_router: Option<UserPostsDetailMatch>,
+}
+
+/// 用户设置路由 - 第二层 Router
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/settings")]
+struct UserSettingsRoute {
+  #[query]
+  query: SimpleQuery,
+  #[sub_router]
+  sub_router: Option<UserSettingsDetailMatch>,
+}
+
+/// 博客文章路由 - 第二层 Router
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/posts")]
+struct BlogPostsRoute {
+  #[query]
+  query: SimpleQuery,
+  #[sub_router]
+  sub_router: Option<BlogPostsDetailMatch>,
+}
+
+/// 博客分类路由 - 第二层 Router
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/categories")]
+struct BlogCategoriesRoute {
+  #[query]
+  query: SimpleQuery,
+  #[sub_router]
+  sub_router: Option<BlogCategoriesDetailMatch>,
+}
+
+/// 博客归档路由 - 第二层 Router
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/archives")]
+struct BlogArchivesRoute {
+  #[query]
+  query: SimpleQuery,
+  #[sub_router]
+  sub_router: Option<BlogArchivesDetailMatch>,
+}
+
+/// 管理用户路由 - 第二层 Router
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/users")]
+struct AdminUsersRoute {
+  #[query]
+  query: SimpleQuery,
+  #[sub_router]
+  sub_router: Option<AdminUsersDetailMatch>,
+}
+
+/// 管理内容路由 - 第二层 Router
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/content")]
+struct AdminContentRoute {
+  #[query]
+  query: SimpleQuery,
+  #[sub_router]
+  sub_router: Option<AdminContentDetailMatch>,
+}
+
+/// 管理系统路由 - 第二层 Router
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/system")]
+struct AdminSystemRoute {
+  #[query]
+  query: SimpleQuery,
+  #[sub_router]
+  sub_router: Option<AdminSystemDetailMatch>,
+}
+
+// ===== 第三层：详细路由匹配器 =====
+
+/// 用户个人资料详细路由匹配器 - 第三层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, Serialize, RouterMatch)]
+enum UserProfileDetailMatch {
+  Basic(UserProfileBasicRoute),
+  Avatar(UserProfileAvatarRoute),
+  Security(UserProfileSecurityRoute),
+}
+
+/// 用户文章详细路由匹配器 - 第三层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, Serialize, RouterMatch)]
+enum UserPostsDetailMatch {
+  List(UserPostsListRoute),
+  Draft(UserPostsDraftRoute),
+  Published(UserPostsPublishedRoute),
+}
+
+/// 用户设置详细路由匹配器 - 第三层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, Serialize, RouterMatch)]
+enum UserSettingsDetailMatch {
+  General(UserSettingsGeneralRoute),
+  Privacy(UserSettingsPrivacyRoute),
+  Notifications(UserSettingsNotificationsRoute),
+}
+
+/// 博客文章详细路由匹配器 - 第三层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, Serialize, RouterMatch)]
+enum BlogPostsDetailMatch {
+  Recent(BlogPostsRecentRoute),
+  Popular(BlogPostsPopularRoute),
+  Featured(BlogPostsFeaturedRoute),
+}
+
+/// 博客分类详细路由匹配器 - 第三层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, Serialize, RouterMatch)]
+enum BlogCategoriesDetailMatch {
+  Tech(BlogCategoriesTechRoute),
+  Lifestyle(BlogCategoriesLifestyleRoute),
+  Business(BlogCategoriesBusinessRoute),
+}
+
+/// 博客归档详细路由匹配器 - 第三层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, Serialize, RouterMatch)]
+enum BlogArchivesDetailMatch {
+  ByYear(BlogArchivesByYearRoute),
+  ByMonth(BlogArchivesByMonthRoute),
+  ByTag(BlogArchivesByTagRoute),
+}
+
+/// 管理用户详细路由匹配器 - 第三层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, Serialize, RouterMatch)]
+enum AdminUsersDetailMatch {
+  List(AdminUsersListRoute),
+  Roles(AdminUsersRolesRoute),
+  Permissions(AdminUsersPermissionsRoute),
+}
+
+/// 管理内容详细路由匹配器 - 第三层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, Serialize, RouterMatch)]
+enum AdminContentDetailMatch {
+  Posts(AdminContentPostsRoute),
+  Pages(AdminContentPagesRoute),
+  Media(AdminContentMediaRoute),
+}
+
+/// 管理系统详细路由匹配器 - 第三层 RouteMatcher
+#[derive(Debug, Clone, PartialEq, Serialize, RouterMatch)]
+enum AdminSystemDetailMatch {
+  Config(AdminSystemConfigRoute),
+  Logs(AdminSystemLogsRoute),
+  Backup(AdminSystemBackupRoute),
+}
+
+// ===== 第三层：具体路由结构（叶子节点）=====
+
+// 用户个人资料相关路由
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/basic")]
+struct UserProfileBasicRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/avatar")]
+struct UserProfileAvatarRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/security")]
+struct UserProfileSecurityRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+// 用户文章相关路由
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/list")]
+struct UserPostsListRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/draft")]
+struct UserPostsDraftRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/published")]
+struct UserPostsPublishedRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+// 用户设置相关路由
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/general")]
+struct UserSettingsGeneralRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/privacy")]
+struct UserSettingsPrivacyRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/notifications")]
+struct UserSettingsNotificationsRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+// 博客文章相关路由
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/recent")]
+struct BlogPostsRecentRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/popular")]
+struct BlogPostsPopularRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/featured")]
+struct BlogPostsFeaturedRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+// 博客分类相关路由
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/tech")]
+struct BlogCategoriesTechRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/lifestyle")]
+struct BlogCategoriesLifestyleRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/business")]
+struct BlogCategoriesBusinessRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+// 博客归档相关路由
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/by-year")]
+struct BlogArchivesByYearRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/by-month")]
+struct BlogArchivesByMonthRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/by-tag")]
+struct BlogArchivesByTagRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+// 管理用户相关路由
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/list")]
+struct AdminUsersListRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/roles")]
+struct AdminUsersRolesRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/permissions")]
+struct AdminUsersPermissionsRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+// 管理内容相关路由
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/posts")]
+struct AdminContentPostsRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/pages")]
+struct AdminContentPagesRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/media")]
+struct AdminContentMediaRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+// 管理系统相关路由
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/config")]
+struct AdminSystemConfigRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/logs")]
+struct AdminSystemLogsRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/backup")]
+struct AdminSystemBackupRoute {
+  #[query]
+  query: SimpleQuery,
 }
 
 /// 简单查询参数
@@ -176,8 +579,8 @@ impl App {
           if let Ok(app_router) = AppRouter::parse(&pathname) {
             if let Some(new_route) = app_router.sub_router {
               // 检查是否与内存状态不一致
-              let current_state_route = app_state.borrow().get_route().cloned();
-              if current_state_route.as_ref() != Some(&new_route) {
+              let current_state_route = app_state.borrow().get_route().clone();
+              if &current_state_route != &new_route {
                 console::log_1(&format!("状态不一致，更新内存状态: {new_route:?}").into());
 
                 // 更新内存状态
@@ -257,9 +660,14 @@ impl App {
       let closure = Closure::wrap(Box::new(move |event: Event| {
         console::log_1(&"用户页面按钮被点击".into());
         event.prevent_default();
-        let user_route = AppRoute::User(UserRoute {
-          id: 123,
+        let user_route = AppRoute::User(UserModuleRoute {
           query: SimpleQuery::default(),
+          sub_router: Some(UserSubRouterMatch::Profile(UserProfileRoute {
+            query: SimpleQuery::default(),
+            sub_router: Some(UserProfileDetailMatch::Basic(UserProfileBasicRoute {
+              query: SimpleQuery::default(),
+            })),
+          })),
         });
         console::log_1(&format!("准备导航到用户页面: {user_route:?}").into());
         // 使用状态管理的navigate_to_route方法
@@ -296,11 +704,14 @@ impl App {
       let closure = Closure::wrap(Box::new(move |event: Event| {
         console::log_1(&"博客页面按钮被点击".into());
         event.prevent_default();
-        let blog_route = AppRoute::BlogPost(BlogPostRoute {
-          year: 2024,
-          month: 12,
-          slug: "hello-world".to_string(),
+        let blog_route = AppRoute::Blog(BlogModuleRoute {
           query: SimpleQuery::default(),
+          sub_router: Some(BlogSubRouterMatch::Posts(BlogPostsRoute {
+            query: SimpleQuery::default(),
+            sub_router: Some(BlogPostsDetailMatch::Recent(BlogPostsRecentRoute {
+              query: SimpleQuery::default(),
+            })),
+          })),
         });
         console::log_1(&format!("准备导航到博客页面: {blog_route:?}").into());
         // 使用状态管理的navigate_to_route方法
@@ -363,6 +774,48 @@ impl App {
       console::log_1(&"警告: 未找到搜索页面按钮 (search-btn)".into());
     }
 
+    // 管理模块按钮
+    if let Some(admin_btn) = document.get_element_by_id("admin-btn") {
+      console::log_1(&"找到管理模块按钮，设置点击事件".into());
+      let app_state = self.state.clone();
+      let content_element = self.content_element.clone();
+      let closure = Closure::wrap(Box::new(move |event: Event| {
+        console::log_1(&"管理模块按钮被点击".into());
+        event.prevent_default();
+        let admin_route = AppRoute::Admin(AdminModuleRoute {
+          query: SimpleQuery::default(),
+          sub_router: Some(AdminSubRouterMatch::Users(AdminUsersRoute {
+            query: SimpleQuery::default(),
+            sub_router: Some(AdminUsersDetailMatch::List(AdminUsersListRoute {
+              query: SimpleQuery::default(),
+            })),
+          })),
+        });
+        console::log_1(&format!("准备导航到管理模块: {admin_route:?}").into());
+        // 使用状态管理的navigate_to_route方法
+        app_state.borrow_mut().set_route(admin_route.clone());
+        let url = app_state.borrow().format_current_url();
+        if let Some(window) = window() {
+          if let Ok(history) = window.history() {
+            let _ = history.push_state_with_url(&JsValue::NULL, "", Some(&url));
+          }
+        }
+        // 更新页面内容和路由序列化数据
+        if let Err(e) = render_route(&admin_route, &content_element) {
+          console::log_1(&format!("渲染错误: {e:?}").into());
+        }
+        if let Err(e) = update_route_json(&admin_route) {
+          console::log_1(&format!("更新路由JSON错误: {e:?}").into());
+        }
+        console::log_1(&"管理模块导航成功".into());
+      }) as Box<dyn Fn(Event)>);
+
+      admin_btn.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())?;
+      closure.forget();
+    } else {
+      console::log_1(&"警告: 未找到管理模块按钮 (admin-btn)".into());
+    }
+
     console::log_1(&"导航按钮事件监听器设置完成".into());
     Ok(())
   }
@@ -376,16 +829,18 @@ fn update_route_json(route: &AppRoute) -> Result<(), JsValue> {
     // 根据路由类型获取对应的pattern
     let pattern = match route {
       AppRoute::Home(_) => "/",
-      AppRoute::User(_) => "/users/:id",
-      AppRoute::BlogPost(_) => "/blog/:year/:month/:slug",
+      AppRoute::User(_) => "/users",
+      AppRoute::Blog(_) => "/blog",
+      AppRoute::Admin(_) => "/admin",
       AppRoute::Search(_) => "/search",
     };
 
     // 根据路由类型格式化路径
     let formatted_path = match route {
       AppRoute::Home(_) => "/".to_string(),
-      AppRoute::User(user_route) => format!("/user/{}", user_route.id),
-      AppRoute::BlogPost(blog_route) => format!("/blog/{}/{}/{}", blog_route.year, blog_route.month, blog_route.slug),
+      AppRoute::User(_) => "/users".to_string(),
+      AppRoute::Blog(_) => "/blog".to_string(),
+      AppRoute::Admin(_) => "/admin".to_string(),
       AppRoute::Search(_) => "/search".to_string(),
     };
 
@@ -398,7 +853,8 @@ fn update_route_json(route: &AppRoute) -> Result<(), JsValue> {
       "route_type": match route {
         AppRoute::Home(_) => "Home",
         AppRoute::User(_) => "User",
-        AppRoute::BlogPost(_) => "BlogPost",
+        AppRoute::Blog(_) => "Blog",
+        AppRoute::Admin(_) => "Admin",
         AppRoute::Search(_) => "Search",
       },
       "status": "active"
@@ -429,33 +885,50 @@ fn render_route(route: &AppRoute, content_element: &HtmlElement) -> Result<(), J
                 </ul>
             "#
     }
-    AppRoute::User(user_route) => {
-      helpers::set_title(&format!("用户 {} - Ruled Router Demo", user_route.id))?;
+    AppRoute::User(_user_route) => {
+      helpers::set_title("用户模块 - Ruled Router Demo")?;
+      r#"
+                <h1>用户模块页面</h1>
+                <p>这是用户模块的主页面，包含多层嵌套路由。</p>
+                <p>支持的子路由：</p>
+                <ul>
+                    <li>/users/profile - 个人资料管理</li>
+                    <li>/users/posts - 文章管理</li>
+                    <li>/users/settings - 设置管理</li>
+                </ul>
+                <div>
+                    <button onclick="history.back()">返回</button>
+                </div>
+            "#
+    }
+    AppRoute::Blog(blog_route) => {
+      helpers::set_title("博客模块 - Ruled Router Demo")?;
       &format!(
         r#"
-                <h1>用户页面</h1>
-                <p>当前查看用户 ID: <strong>{}</strong></p>
-                <p>这个页面展示了路径参数的解析功能。</p>
+                <h1>博客模块</h1>
+                <p>当前路径: /blog</p>
+                <p>这是博客模块的主页面，包含文章、分类和归档功能。</p>
+                <p>子路由: {:?}</p>
                 <div>
                     <button onclick="history.back()">返回</button>
                 </div>
             "#,
-        user_route.id
+        blog_route.sub_router
       )
     }
-    AppRoute::BlogPost(blog_route) => {
-      helpers::set_title(&format!("{} - Ruled Router Blog", blog_route.slug))?;
+    AppRoute::Admin(admin_route) => {
+      helpers::set_title("管理模块 - Ruled Router Demo")?;
       &format!(
         r#"
-                <h1>博客文章</h1>
-                <p><strong>标题:</strong> {}</p>
-                 <p><strong>发布时间:</strong> {}/{}</p>
-                <p>这个页面展示了多个路径参数的解析功能。</p>
+                <h1>管理模块</h1>
+                <p>当前路径: /admin</p>
+                <p>这是管理模块的主页面，包含用户、内容和系统管理功能。</p>
+                <p>子路由: {:?}</p>
                 <div>
                     <button onclick="history.back()">返回</button>
                 </div>
             "#,
-        blog_route.slug, blog_route.year, blog_route.month
+        admin_route.sub_router
       )
     }
     AppRoute::Search(_) => {
