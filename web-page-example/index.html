@@ -155,6 +155,34 @@
         font-style: italic;
       }
 
+      .route-serialization {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .route-serialization h3 {
+        margin: 0 0 15px 0;
+        color: #333;
+        font-size: 1.2em;
+      }
+
+      .route-serialization pre {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+        padding: 15px;
+        margin: 0;
+        overflow-x: auto;
+        font-size: 13px;
+        line-height: 1.4;
+        color: #495057;
+        text-align: left;
+      }
+
       @media (max-width: 600px) {
         body {
           padding: 10px;
@@ -196,6 +224,14 @@
 
       <div id="content" class="loading">
         <p>正在加载 WASM 模块...</p>
+      </div>
+
+      <div class="route-serialization">
+        <h3>🔧 路由序列化数据</h3>
+        <pre id="route-json" style="text-align: left;">{
+  "current_route": null,
+  "status": "loading"
+}</pre>
       </div>
 
       <div class="footer">

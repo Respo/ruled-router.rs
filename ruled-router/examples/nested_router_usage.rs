@@ -31,15 +31,6 @@ enum AppRouterMatch {
   Admin(AdminModuleRoute),
 }
 
-/// 应用根路由 - 第一层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
-#[router(pattern = "/")]
-#[allow(dead_code)]
-struct AppRoute {
-  #[query]
-  query: SimpleQuery,
-}
-
 // ===== 第二层：模块路由 =====
 
 /// 用户模块路由 - 第二层 Router

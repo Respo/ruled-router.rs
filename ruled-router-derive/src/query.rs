@@ -2,7 +2,7 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, Fields, GenericArgument, Lit, Meta, PathArguments, Type, TypePath};
+use syn::{Data, DeriveInput, Fields, Lit, Meta, Type, TypePath};
 
 /// Expand the Query derive macro
 pub fn expand_query_derive(input: DeriveInput) -> syn::Result<TokenStream> {
@@ -260,19 +260,4 @@ fn is_vec_type(ty: &Type) -> bool {
     }
   }
   false
-}
-
-/// 提取 Option<T> 或 Vec<T> 中的内部类型 T
-#[allow(dead_code)]
-fn extract_inner_type(ty: &Type) -> Option<&Type> {
-  if let Type::Path(TypePath { path, .. }) = ty {
-    if let Some(segment) = path.segments.last() {
-      if let PathArguments::AngleBracketed(args) = &segment.arguments {
-        if let Some(GenericArgument::Type(inner_ty)) = args.args.first() {
-          return Some(inner_ty);
-        }
-      }
-    }
-  }
-  None
 }

@@ -24,25 +24,6 @@ struct FilterQuery {
   max_price: Option<f64>,
 }
 
-/// 用户偏好查询测试
-#[derive(Debug, Clone, PartialEq, Default, Query)]
-#[allow(dead_code)]
-struct UserPreferencesQuery {
-  theme: Option<String>,
-  lang: Option<String>,
-  timezone: Option<String>,
-  notifications: Option<bool>,
-}
-
-/// 分页查询测试
-#[derive(Debug, Clone, PartialEq, Default, Query)]
-#[allow(dead_code)]
-struct PaginationQuery {
-  page: Option<u32>,
-  per_page: Option<u32>,
-  offset: Option<u32>,
-}
-
 /// 复杂查询参数测试
 #[derive(Debug, Clone, PartialEq, Default, Query)]
 struct ComplexQuery {

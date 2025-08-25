@@ -3,242 +3,420 @@
 //! 这个示例展示了如何在浏览器环境中使用 ruled-router 的 DOM 功能，
 //! 包括路由监听、导航和页面渲染。
 
-use ruled_router::prelude::*;
-use ruled_router::NoSubRouter;
 use std::cell::RefCell;
 use std::rc::Rc;
+
+use ruled_router::prelude::*;
+use ruled_router::RouteMatcher;
+use ruled_router_derive::RouterMatch;
+use serde::Serialize;
+
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{console, window, Event, HtmlElement, HtmlInputElement};
 
-/// 应用路由定义
-#[derive(Debug, Clone, PartialEq)]
-enum AppRoute {
-  Home,
-  User { id: u32 },
-  BlogPost { year: u32, month: u32, slug: String },
-  Search,
+/// 应用状态管理结构体
+#[derive(Debug, Clone)]
+struct AppState {
+  current_route: Option<AppRoute>,
 }
 
-impl Router for AppRoute {
-  type SubRouterMatch = NoSubRouter;
+impl AppState {
+  fn new() -> Self {
+    Self { current_route: None }
+  }
 
-  fn parse(path: &str) -> Result<Self, ParseError> {
-    // 手动解析路径
-    let (path_part, _) = if let Some(pos) = path.find('?') {
-      path.split_at(pos)
+  fn set_route(&mut self, route: AppRoute) {
+    self.current_route = Some(route);
+  }
+
+  fn get_route(&self) -> Option<&AppRoute> {
+    self.current_route.as_ref()
+  }
+
+  fn format_current_url(&self) -> String {
+    if let Some(route) = &self.current_route {
+      route.format()
     } else {
-      (path, "")
-    };
-
-    match path_part {
-      "/" => Ok(AppRoute::Home),
-      "/search" => Ok(AppRoute::Search),
-      path if path.starts_with("/users/") => {
-        let id_str = &path[7..]; // 跳过 "/users/"
-        let id = id_str
-          .parse::<u32>()
-          .map_err(|_| ParseError::TypeConversion(format!("无法将 '{id_str}' 转换为数字")))?;
-        Ok(AppRoute::User { id })
-      }
-      path if path.starts_with("/blog/") => {
-        let parts: Vec<&str> = path[6..].split('/').collect(); // 跳过 "/blog/"
-        if parts.len() == 3 {
-          let year = parts[0]
-            .parse::<u32>()
-            .map_err(|_| ParseError::TypeConversion(format!("无法将 '{}' 转换为年份", parts[0])))?;
-          let month = parts[1]
-            .parse::<u32>()
-            .map_err(|_| ParseError::TypeConversion(format!("无法将 '{}' 转换为月份", parts[1])))?;
-          let slug = parts[2].to_string();
-          Ok(AppRoute::BlogPost { year, month, slug })
-        } else {
-          Err(ParseError::InvalidPath(format!("博客路径格式错误: {path}")))
-        }
-      }
-      _ => Err(ParseError::InvalidPath(format!("无法识别的路径: {path}"))),
+      "/".to_string()
     }
   }
+}
 
-  fn format(&self) -> String {
-    match self {
-      AppRoute::Home => "/".to_string(),
-      AppRoute::User { id } => format!("/users/{id}"),
-      AppRoute::BlogPost { year, month, slug } => format!("/blog/{year}/{month}/{slug}"),
-      AppRoute::Search => "/search".to_string(),
-    }
-  }
+/// 应用路由匹配器 - 顶层路由
+#[derive(Debug, Clone, PartialEq, Serialize, RouterMatch)]
+enum AppRoute {
+  Home(HomeRoute),
+  User(UserRoute),
+  BlogPost(BlogPostRoute),
+  Search(SearchRoute),
+}
 
-  fn pattern() -> &'static str {
-    "AppRoute patterns: /, /users/:id, /blog/:year/:month/:slug, /search"
-  }
+/// 应用根路由器 - 包装 AppRoute 以符合 DomRouter 的要求
+#[derive(Debug, Clone, Router)]
+#[router(pattern = "/")]
+struct AppRouter {
+  #[sub_router]
+  sub_router: Option<AppRoute>,
+}
+
+/// 首页路由
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/")]
+struct HomeRoute {
+  #[query]
+  query: SimpleQuery,
+}
+
+/// 用户路由
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/users/:id")]
+struct UserRoute {
+  id: u32,
+  #[query]
+  query: SimpleQuery,
+}
+
+/// 博客文章路由
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/blog/:year/:month/:slug")]
+struct BlogPostRoute {
+  year: u32,
+  month: u32,
+  slug: String,
+  #[query]
+  query: SimpleQuery,
+}
+
+/// 搜索路由
+#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[router(pattern = "/search")]
+struct SearchRoute {
+  #[query]
+  query: SearchQuery,
+}
+
+/// 简单查询参数
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Query)]
+struct SimpleQuery {
+  #[query(name = "format")]
+  format: Option<String>,
 }
 
 /// 搜索查询参数
-#[derive(Debug, Clone, PartialEq, Default, Query)]
+#[derive(Debug, Clone, PartialEq, Default, Query, Serialize)]
 struct SearchQuery {
   q: Option<String>,
   page: Option<u32>,
   tags: Vec<String>,
 }
 
-/// 完整的搜索路由，包含查询参数
-#[derive(Debug, Clone, PartialEq)]
-struct SearchRoute {
-  query: SearchQuery,
-}
-
-impl Router for SearchRoute {
-  type SubRouterMatch = NoSubRouter;
-
-  fn parse(path: &str) -> Result<Self, ParseError> {
-    let (path_part, query_part) = if let Some(pos) = path.find('?') {
-      (&path[..pos], &path[pos + 1..])
-    } else {
-      (path, "")
-    };
-
-    if path_part == "/search" {
-      let query = if query_part.is_empty() {
-        SearchQuery::default()
-      } else {
-        SearchQuery::parse(query_part)?
-      };
-      Ok(SearchRoute { query })
-    } else {
-      Err(ParseError::InvalidPath(format!("不是搜索路径: {path_part}")))
-    }
-  }
-
-  fn format(&self) -> String {
-    let query_string = self.query.format();
-    if query_string.is_empty() {
-      "/search".to_string()
-    } else {
-      format!("/search?{query_string}")
-    }
-  }
-
-  fn pattern() -> &'static str {
-    "/search?q=...&page=...&tags=..."
-  }
-}
-
 /// 应用状态
 struct App {
-  router: DomRouter<AppRoute>,
+  router: AppRoute,
   content_element: HtmlElement,
+  state: Rc<RefCell<AppState>>,
 }
 
 impl App {
   /// 创建新的应用实例
   fn new() -> Result<Self, JsValue> {
-    let router = DomRouter::<AppRoute>::new()?;
     let document = helpers::get_document()?;
     let content_element = document
       .get_element_by_id("content")
       .ok_or("无法找到 #content 元素")?
       .dyn_into::<HtmlElement>()?;
+    let state = Rc::new(RefCell::new(AppState::new()));
 
-    Ok(App { router, content_element })
+    Ok(App {
+      router: AppRoute::Home(HomeRoute {
+        query: SimpleQuery {
+          format: Some("json".to_string()),
+        },
+      }),
+      content_element,
+      state,
+    })
   }
 
   /// 初始化应用
   fn init(&mut self) -> Result<(), JsValue> {
+    console::log_1(&"开始初始化路由器".into());
     // 设置路由监听器
     let content_element = self.content_element.clone();
-    self.router.add_listener(move |route: &AppRoute| {
-      if let Err(e) = render_route(route, &content_element) {
-        console::log_1(&format!("渲染错误: {e:?}").into());
-      }
-    });
-
-    // 开始监听路由变化
-    self.router.start_listening()?;
 
     // 渲染当前路由
-    if let Ok(current_route) = self.router.current_route() {
-      render_route(&current_route, &self.content_element)?;
-    }
+    console::log_1(&"获取当前路由".into());
+    render_route(&self.router, &content_element)?;
 
     // 设置导航按钮事件监听器
     self.setup_navigation()?;
 
+    // 添加URL监听器（监听浏览器前进/后退按钮）
+    self.setup_url_listener()?;
+
+    Ok(())
+  }
+
+  /// 设置URL监听器（监听浏览器前进/后退按钮）
+  fn setup_url_listener(&self) -> Result<(), JsValue> {
+    let app_state = self.state.clone();
+    let content_element = self.content_element.clone();
+
+    let closure = Closure::wrap(Box::new(move |_event: Event| {
+      console::log_1(&"URL变化被检测到".into());
+
+      // 获取当前URL路径
+      if let Some(window) = window() {
+        let location = window.location();
+        if let Ok(pathname) = location.pathname() {
+          console::log_1(&format!("当前URL路径: {pathname}").into());
+
+          // 尝试解析当前URL
+          if let Ok(app_router) = AppRouter::parse(&pathname) {
+            if let Some(new_route) = app_router.sub_router {
+              // 检查是否与内存状态不一致
+              let current_state_route = app_state.borrow().get_route().cloned();
+              if current_state_route.as_ref() != Some(&new_route) {
+                console::log_1(&format!("状态不一致，更新内存状态: {new_route:?}").into());
+
+                // 更新内存状态
+                app_state.borrow_mut().set_route(new_route.clone());
+
+                // 更新页面内容
+                if let Err(e) = render_route(&new_route, &content_element) {
+                  console::log_1(&format!("渲染错误: {e:?}").into());
+                }
+                if let Err(e) = update_route_json(&new_route) {
+                  console::log_1(&format!("更新路由JSON错误: {e:?}").into());
+                }
+              } else {
+                console::log_1(&"状态一致，无需更新".into());
+              }
+            }
+          }
+        }
+      }
+    }) as Box<dyn FnMut(_)>);
+
+    if let Some(window) = window() {
+      window.set_onpopstate(Some(closure.as_ref().unchecked_ref()));
+    }
+
+    closure.forget();
     Ok(())
   }
 
   /// 设置导航按钮的事件监听器
   fn setup_navigation(&self) -> Result<(), JsValue> {
+    console::log_1(&"开始设置导航按钮事件监听器".into());
     let document = helpers::get_document()?;
-    let router = Rc::new(RefCell::new(self.router.clone()));
+    let _router = &self.router;
 
     // 首页按钮
     if let Some(home_btn) = document.get_element_by_id("home-btn") {
-      let router = router.clone();
-      let closure = Closure::wrap(Box::new(move |_: Event| {
-        if let Err(e) = router.borrow().navigate_to(&AppRoute::Home, false) {
-          console::log_1(&format!("导航错误: {e:?}").into());
+      console::log_1(&"找到首页按钮，设置点击事件".into());
+      let app_state = self.state.clone();
+      let content_element = self.content_element.clone();
+      let closure = Closure::wrap(Box::new(move |event: Event| {
+        console::log_1(&"首页按钮被点击".into());
+        event.prevent_default();
+        let home_route = AppRoute::Home(HomeRoute {
+          query: SimpleQuery::default(),
+        });
+        console::log_1(&format!("准备导航到首页: {home_route:?}").into());
+        // 使用状态管理的navigate_to_route方法
+        app_state.borrow_mut().set_route(home_route.clone());
+        let url = app_state.borrow().format_current_url();
+        if let Some(window) = window() {
+          if let Ok(history) = window.history() {
+            let _ = history.push_state_with_url(&JsValue::NULL, "", Some(&url));
+          }
         }
+        // 更新页面内容和路由序列化数据
+        if let Err(e) = render_route(&home_route, &content_element) {
+          console::log_1(&format!("渲染错误: {e:?}").into());
+        }
+        if let Err(e) = update_route_json(&home_route) {
+          console::log_1(&format!("更新路由JSON错误: {e:?}").into());
+        }
+        console::log_1(&"首页导航成功".into());
       }) as Box<dyn Fn(Event)>);
 
       home_btn.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())?;
       closure.forget();
+    } else {
+      console::log_1(&"警告: 未找到首页按钮 (home-btn)".into());
     }
 
     // 用户页面按钮
     if let Some(user_btn) = document.get_element_by_id("user-btn") {
-      let router = router.clone();
-      let closure = Closure::wrap(Box::new(move |_: Event| {
-        if let Err(e) = router.borrow().navigate_to(&AppRoute::User { id: 123 }, false) {
-          console::log_1(&format!("导航错误: {e:?}").into());
+      console::log_1(&"找到用户页面按钮，设置点击事件".into());
+      let app_state = self.state.clone();
+      let content_element = self.content_element.clone();
+      let closure = Closure::wrap(Box::new(move |event: Event| {
+        console::log_1(&"用户页面按钮被点击".into());
+        event.prevent_default();
+        let user_route = AppRoute::User(UserRoute {
+          id: 123,
+          query: SimpleQuery::default(),
+        });
+        console::log_1(&format!("准备导航到用户页面: {user_route:?}").into());
+        // 使用状态管理的navigate_to_route方法
+        app_state.borrow_mut().set_route(user_route.clone());
+        let url = app_state.borrow().format_current_url();
+        console::log_1(&format!("准备导航到用户页面: {url}").into());
+        if let Some(window) = window() {
+          if let Ok(history) = window.history() {
+            let _ = history.push_state_with_url(&JsValue::NULL, "", Some(&url));
+            console::log_1(&format!("用户页面导航成功，URL: {url}").into());
+          }
         }
+        // 更新页面内容和路由序列化数据
+        if let Err(e) = render_route(&user_route, &content_element) {
+          console::log_1(&format!("渲染错误: {e:?}").into());
+        }
+        if let Err(e) = update_route_json(&user_route) {
+          console::log_1(&format!("更新路由JSON错误: {e:?}").into());
+        }
+        console::log_1(&"用户页面导航成功".into());
       }) as Box<dyn Fn(Event)>);
 
       user_btn.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())?;
       closure.forget();
+    } else {
+      console::log_1(&"警告: 未找到用户页面按钮 (user-btn)".into());
     }
 
     // 博客页面按钮
     if let Some(blog_btn) = document.get_element_by_id("blog-btn") {
-      let router = router.clone();
-      let closure = Closure::wrap(Box::new(move |_: Event| {
-        if let Err(e) = router.borrow().navigate_to(
-          &AppRoute::BlogPost {
-            year: 2024,
-            month: 12,
-            slug: "hello-world".to_string(),
-          },
-          false,
-        ) {
-          console::log_1(&format!("导航错误: {e:?}").into());
+      console::log_1(&"找到博客页面按钮，设置点击事件".into());
+      let app_state = self.state.clone();
+      let content_element = self.content_element.clone();
+      let closure = Closure::wrap(Box::new(move |event: Event| {
+        console::log_1(&"博客页面按钮被点击".into());
+        event.prevent_default();
+        let blog_route = AppRoute::BlogPost(BlogPostRoute {
+          year: 2024,
+          month: 12,
+          slug: "hello-world".to_string(),
+          query: SimpleQuery::default(),
+        });
+        console::log_1(&format!("准备导航到博客页面: {blog_route:?}").into());
+        // 使用状态管理的navigate_to_route方法
+        app_state.borrow_mut().set_route(blog_route.clone());
+        let url = app_state.borrow().format_current_url();
+        if let Some(window) = window() {
+          if let Ok(history) = window.history() {
+            let _ = history.push_state_with_url(&JsValue::NULL, "", Some(&url));
+          }
         }
+        // 更新页面内容和路由序列化数据
+        if let Err(e) = render_route(&blog_route, &content_element) {
+          console::log_1(&format!("渲染错误: {e:?}").into());
+        }
+        if let Err(e) = update_route_json(&blog_route) {
+          console::log_1(&format!("更新路由JSON错误: {e:?}").into());
+        }
+        console::log_1(&"博客页面导航成功".into());
       }) as Box<dyn Fn(Event)>);
 
       blog_btn.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())?;
       closure.forget();
+    } else {
+      console::log_1(&"警告: 未找到博客页面按钮 (blog-btn)".into());
     }
 
     // 搜索页面按钮
     if let Some(search_btn) = document.get_element_by_id("search-btn") {
-      let router = router.clone();
-      let closure = Closure::wrap(Box::new(move |_: Event| {
-        if let Err(e) = router.borrow().navigate_to(&AppRoute::Search, false) {
-          console::log_1(&format!("导航错误: {e:?}").into());
+      console::log_1(&"找到搜索页面按钮，设置点击事件".into());
+      let app_state = self.state.clone();
+      let content_element = self.content_element.clone();
+      let closure = Closure::wrap(Box::new(move |event: Event| {
+        console::log_1(&"搜索页面按钮被点击".into());
+        event.prevent_default();
+        let search_route = AppRoute::Search(SearchRoute {
+          query: SearchQuery::default(),
+        });
+        console::log_1(&format!("准备导航到搜索页面: {search_route:?}").into());
+        // 使用状态管理的navigate_to_route方法
+        app_state.borrow_mut().set_route(search_route.clone());
+        let url = app_state.borrow().format_current_url();
+        if let Some(window) = window() {
+          if let Ok(history) = window.history() {
+            let _ = history.push_state_with_url(&JsValue::NULL, "", Some(&url));
+          }
         }
+        // 更新页面内容和路由序列化数据
+        if let Err(e) = render_route(&search_route, &content_element) {
+          console::log_1(&format!("渲染错误: {e:?}").into());
+        }
+        if let Err(e) = update_route_json(&search_route) {
+          console::log_1(&format!("更新路由JSON错误: {e:?}").into());
+        }
+        console::log_1(&"搜索页面导航成功".into());
       }) as Box<dyn Fn(Event)>);
 
       search_btn.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())?;
       closure.forget();
+    } else {
+      console::log_1(&"警告: 未找到搜索页面按钮 (search-btn)".into());
     }
 
+    console::log_1(&"导航按钮事件监听器设置完成".into());
     Ok(())
   }
+}
+
+/// 更新路由序列化JSON显示
+fn update_route_json(route: &AppRoute) -> Result<(), JsValue> {
+  let document = helpers::get_document()?;
+
+  if let Some(json_element) = document.get_element_by_id("route-json") {
+    // 根据路由类型获取对应的pattern
+    let pattern = match route {
+      AppRoute::Home(_) => "/",
+      AppRoute::User(_) => "/users/:id",
+      AppRoute::BlogPost(_) => "/blog/:year/:month/:slug",
+      AppRoute::Search(_) => "/search",
+    };
+
+    // 根据路由类型格式化路径
+    let formatted_path = match route {
+      AppRoute::Home(_) => "/".to_string(),
+      AppRoute::User(user_route) => format!("/user/{}", user_route.id),
+      AppRoute::BlogPost(blog_route) => format!("/blog/{}/{}/{}", blog_route.year, blog_route.month, blog_route.slug),
+      AppRoute::Search(_) => "/search".to_string(),
+    };
+
+    // 创建序列化数据结构
+    let route_data = serde_json::json!({
+      "current_route": route,
+      "formatted_path": formatted_path,
+      "pattern": pattern,
+      "timestamp": js_sys::Date::now(),
+      "route_type": match route {
+        AppRoute::Home(_) => "Home",
+        AppRoute::User(_) => "User",
+        AppRoute::BlogPost(_) => "BlogPost",
+        AppRoute::Search(_) => "Search",
+      },
+      "status": "active"
+    });
+
+    // 格式化JSON字符串
+    let json_str = serde_json::to_string_pretty(&route_data).map_err(|e| JsValue::from_str(&format!("JSON序列化错误: {e}")))?;
+
+    json_element.set_text_content(Some(&json_str));
+  }
+
+  Ok(())
 }
 
 /// 根据路由渲染页面内容
 fn render_route(route: &AppRoute, content_element: &HtmlElement) -> Result<(), JsValue> {
   let html = match route {
-    AppRoute::Home => {
+    AppRoute::Home(_) => {
       helpers::set_title("首页 - Ruled Router Demo")?;
       r#"
                 <h1>欢迎使用 Ruled Router</h1>
@@ -251,34 +429,36 @@ fn render_route(route: &AppRoute, content_element: &HtmlElement) -> Result<(), J
                 </ul>
             "#
     }
-    AppRoute::User { id } => {
-      helpers::set_title(&format!("用户 {id} - Ruled Router Demo"))?;
+    AppRoute::User(user_route) => {
+      helpers::set_title(&format!("用户 {} - Ruled Router Demo", user_route.id))?;
       &format!(
         r#"
                 <h1>用户页面</h1>
-                <p>当前查看用户 ID: <strong>{id}</strong></p>
+                <p>当前查看用户 ID: <strong>{}</strong></p>
                 <p>这个页面展示了路径参数的解析功能。</p>
                 <div>
                     <button onclick="history.back()">返回</button>
                 </div>
-            "#
+            "#,
+        user_route.id
       )
     }
-    AppRoute::BlogPost { year, month, slug } => {
-      helpers::set_title(&format!("{slug} - Ruled Router Blog"))?;
+    AppRoute::BlogPost(blog_route) => {
+      helpers::set_title(&format!("{} - Ruled Router Blog", blog_route.slug))?;
       &format!(
         r#"
                 <h1>博客文章</h1>
-                <p><strong>标题:</strong> {slug}</p>
-                <p><strong>发布时间:</strong> {year}/{month}</p>
+                <p><strong>标题:</strong> {}</p>
+                 <p><strong>发布时间:</strong> {}/{}</p>
                 <p>这个页面展示了多个路径参数的解析功能。</p>
                 <div>
                     <button onclick="history.back()">返回</button>
                 </div>
-            "#
+            "#,
+        blog_route.slug, blog_route.year, blog_route.month
       )
     }
-    AppRoute::Search => {
+    AppRoute::Search(_) => {
       helpers::set_title("搜索 - Ruled Router Demo")?;
       r#"
                 <h1>搜索页面</h1>
@@ -297,8 +477,13 @@ fn render_route(route: &AppRoute, content_element: &HtmlElement) -> Result<(), J
 
   content_element.set_inner_html(html);
 
+  // 更新路由JSON显示
+  if let Err(e) = update_route_json(route) {
+    console::log_1(&format!("更新JSON显示错误: {e:?}").into());
+  }
+
   // 如果是搜索页面，设置搜索功能
-  if let AppRoute::Search = route {
+  if let AppRoute::Search(_) = route {
     setup_search_functionality()?;
   }
 
