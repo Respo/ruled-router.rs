@@ -4,7 +4,6 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{DeriveInput, GenericArgument, PathArguments, Type, TypePath, Data, Fields, Lit, Meta};
 
-use crate::extract_struct_fields;
 
 /// Expand the Query derive macro
 pub fn expand_query_derive(input: DeriveInput) -> syn::Result<TokenStream> {

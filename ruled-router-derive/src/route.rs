@@ -4,7 +4,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{DeriveInput, Type, Data, Fields};
 
-use crate::{extract_route_config, extract_route_pattern, extract_struct_fields};
+use crate::extract_route_config;
 
 /// 从路径模式中提取参数名
 fn extract_path_params(pattern: &str) -> Vec<String> {

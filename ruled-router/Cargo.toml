@@ -12,10 +12,25 @@ readme = "../README.md"
 
 [dependencies]
 ruled-router-derive = { path = "../ruled-router-derive", optional = true }
+web-sys = { version = "0.3", features = [
+  "console",
+  "Document",
+  "Element",
+  "HtmlElement",
+  "Location",
+  "History",
+  "Window",
+  "PopStateEvent",
+  "EventTarget",
+  "Event",
+  "Url",
+], optional = true }
+wasm-bindgen = { version = "0.2", optional = true }
 
 [features]
 default = ["derive"]
 derive = ["ruled-router-derive"]
+dom = ["web-sys", "wasm-bindgen"]
 
 [dev-dependencies]
 trybuild = { workspace = true }

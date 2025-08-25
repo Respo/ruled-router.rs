@@ -7,7 +7,6 @@
 //! - 实际的 URL 解析和构建场景
 
 use ruled_router::prelude::*;
-use std::collections::HashMap;
 
 // ===== 用户管理 API =====
 
@@ -173,7 +172,7 @@ where
     if query_string.is_empty() {
         path
     } else {
-        format!("{}?{}", path, query_string)
+        format!("{path}?{query_string}")
     }
 }
 
@@ -240,95 +239,95 @@ fn main() {
     println!("\n1. 用户 API 示例:");
     
     let user_url = "/api/v1/users/123?include=profile&include=preferences&include_sensitive=true&format=json";
-    println!("  URL: {}", user_url);
+    println!("  URL: {user_url}");
     
     match parse_full_url::<UserRoute, UserQuery>(user_url) {
         Ok((route, query)) => {
-            println!("  路由: {:#?}", route);
-            println!("  查询: {:#?}", query);
+            println!("  路由: {route:#?}");
+            println!("  查询: {query:#?}");
             
             let reconstructed = build_full_url(&route, &query);
-            println!("  重构: {}", reconstructed);
+            println!("  重构: {reconstructed}");
         }
-        Err(e) => println!("  错误: {}", e),
+        Err(e) => println!("  错误: {e}"),
     }
     
     // 2. 博客文章 API 示例
     println!("\n2. 博客文章 API 示例:");
     
     let blog_url = "/blog/2024/03/rust-async-programming?include_comments=true&comment_sort=newest&comment_page=1";
-    println!("  URL: {}", blog_url);
+    println!("  URL: {blog_url}");
     
     match parse_full_url::<BlogPostRoute, BlogPostQuery>(blog_url) {
         Ok((route, query)) => {
-            println!("  路由: {:#?}", route);
-            println!("  查询: {:#?}", query);
+            println!("  路由: {route:#?}");
+            println!("  查询: {query:#?}");
             
             let reconstructed = build_full_url(&route, &query);
-            println!("  重构: {}", reconstructed);
+            println!("  重构: {reconstructed}");
         }
-        Err(e) => println!("  错误: {}", e),
+        Err(e) => println!("  错误: {e}"),
     }
     
     // 3. 搜索 API 示例
     println!("\n3. 搜索 API 示例:");
     
     let search_url = "/api/v1/search?q=rust%20programming&categories=tutorial&categories=book&tags=async&tags=web&page=2&per_page=15&sort_by=popularity&order=desc&price_min=10.0&price_max=50.0&in_stock=true&featured=true";
-    println!("  URL: {}", search_url);
+    println!("  URL: {search_url}");
     
     match parse_full_url::<SearchRoute, SearchQuery>(search_url) {
         Ok((route, mut query)) => {
-            println!("  路由: {:#?}", route);
-            println!("  原始查询: {:#?}", query);
+            println!("  路由: {route:#?}");
+            println!("  原始查询: {query:#?}");
             
             // 验证查询参数
             match validate_search_query(&query) {
                 Ok(()) => println!("  ✓ 查询参数验证通过"),
-                Err(e) => println!("  ✗ 查询参数验证失败: {}", e),
+                Err(e) => println!("  ✗ 查询参数验证失败: {e}"),
             }
             
             // 应用默认值
             query = apply_search_defaults(query);
-            println!("  应用默认值后: {:#?}", query);
+            println!("  应用默认值后: {query:#?}");
             
             let reconstructed = build_full_url(&route, &query);
-            println!("  重构: {}", reconstructed);
+            println!("  重构: {reconstructed}");
         }
-        Err(e) => println!("  错误: {}", e),
+        Err(e) => println!("  错误: {e}"),
     }
     
     // 4. 产品 API 示例
     println!("\n4. 产品 API 示例:");
     
     let product_url = "/api/v1/products/456789?include=reviews&include=variants&variant=red-large&region=us&currency=usd";
-    println!("  URL: {}", product_url);
+    println!("  URL: {product_url}");
     
     match parse_full_url::<ProductRoute, ProductQuery>(product_url) {
         Ok((route, query)) => {
-            println!("  路由: {:#?}", route);
-            println!("  查询: {:#?}", query);
+            println!("  路由: {route:#?}");
+            println!("  查询: {query:#?}");
             
             let reconstructed = build_full_url(&route, &query);
-            println!("  重构: {}", reconstructed);
+            println!("  重构: {reconstructed}");
         }
-        Err(e) => println!("  错误: {}", e),
+        Err(e) => println!("  错误: {e}"),
     }
     
     // 5. 产品列表 API 示例
     println!("\n5. 产品列表 API 示例:");
     
     let product_list_url = "/api/v1/categories/electronics/products?page=1&limit=24&sort=price&order=asc&brand=apple&brand=samsung&color=black&color=white&size=medium&size=large&min_price=100.0&max_price=1000.0&min_rating=4.0&in_stock=true&on_sale=false&is_new=true";
-    println!("  URL: {}", product_list_url);
+    println!("  URL: {product_list_url}");
     
     match parse_full_url::<ProductListRoute, ProductListQuery>(product_list_url) {
         Ok((route, query)) => {
-            println!("  路由: {:#?}", route);
-            println!("  查询: {:#?}", query);
+            println!("  路由: {route:#?}");
+            println!("  查询: {query:#?}");
             
             let reconstructed = build_full_url(&route, &query);
-            println!("  重构: {}", reconstructed);
+            println!("  重构: {reconstructed}");
         }
-        Err(e) => println!("  错误: {}", e),
+        Err(e) => println!("  错误: {e}"),
     }
     
     // 6. 错误处理示例
@@ -342,23 +341,23 @@ fn main() {
     ];
     
     for (url, description) in error_cases {
-        println!("  测试: {} ({})", url, description);
+        println!("  测试: {url} ({description})");
         
         if url.contains("/users/") {
             match parse_full_url::<UserRoute, UserQuery>(url) {
-                Ok((route, query)) => println!("    意外成功: {:?}, {:?}", route, query),
-                Err(e) => println!("    预期错误: {}", e),
+                Ok((route, query)) => println!("    意外成功: {route:?}, {query:?}"),
+                Err(e) => println!("    预期错误: {e}"),
             }
         } else if url.contains("/search") {
             match parse_full_url::<SearchRoute, SearchQuery>(url) {
                 Ok((route, query)) => {
-                    println!("    解析成功: {:?}, {:?}", route, query);
+                    println!("    解析成功: {route:?}, {query:?}");
                     match validate_search_query(&query) {
                         Ok(()) => println!("    验证通过"),
-                        Err(e) => println!("    验证失败: {}", e),
+                        Err(e) => println!("    验证失败: {e}"),
                     }
                 }
-                Err(e) => println!("    解析错误: {}", e),
+                Err(e) => println!("    解析错误: {e}"),
             }
         }
     }
@@ -386,12 +385,12 @@ fn main() {
         ..Default::default()
     };
     
-    println!("  手动构建的查询: {:#?}", search_query);
+    println!("  手动构建的查询: {search_query:#?}");
     
     // 验证
     match validate_search_query(&search_query) {
         Ok(()) => println!("  ✓ 验证通过"),
-        Err(e) => println!("  ✗ 验证失败: {}", e),
+        Err(e) => println!("  ✗ 验证失败: {e}"),
     }
     
     // 应用默认值
@@ -399,7 +398,7 @@ fn main() {
     
     // 构建 URL
     let full_url = build_full_url(&search_route, &search_query);
-    println!("  构建的 URL: {}", full_url);
+    println!("  构建的 URL: {full_url}");
     
     // 验证往返转换
     match parse_full_url::<SearchRoute, SearchQuery>(&full_url) {
@@ -410,7 +409,7 @@ fn main() {
                 println!("  ✗ 往返转换失败");
             }
         }
-        Err(e) => println!("  ✗ 重新解析失败: {}", e),
+        Err(e) => println!("  ✗ 重新解析失败: {e}"),
     }
     
     // 8. 性能测试

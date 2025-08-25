@@ -19,11 +19,11 @@ fn main() {
     let url = "/users/123?page=2";
     match UserRoute::parse(url) {
         Ok(route) => {
-            println!("Parsed route: {:?}", route);
+            println!("Parsed route: {route:?}");
             println!("Formatted: {}", route.format());
         }
         Err(e) => {
-            println!("Parse error: {:?}", e);
+            println!("Parse error: {e:?}");
         }
     }
 }

@@ -11,6 +11,10 @@ pub mod prelude;
 pub mod traits;
 pub mod utils;
 
+// DOM 模块（只有在启用 dom feature 时才编译）
+#[cfg(feature = "dom")]
+pub mod dom;
+
 // 重新导出核心类型
 pub use error::{ParseError, ParseResult};
 pub use formatter::{PathFormatter, QueryFormatter, UrlFormatter};

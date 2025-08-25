@@ -10,3 +10,7 @@ pub use crate::utils::*;
 
 #[cfg(feature = "derive")]
 pub use ruled_router_derive::{Query, Router};
+
+// DOM 功能导出（只有在启用 dom feature 时才导出）
+#[cfg(feature = "dom")]
+pub use crate::dom::{helpers, DomRouter};

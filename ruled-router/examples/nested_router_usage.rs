@@ -298,7 +298,7 @@ where
   if query_str.is_empty() {
     path
   } else {
-    format!("{}?{}", path, query_str)
+    format!("{path}?{query_str}")
   }
 }
 
@@ -308,9 +308,9 @@ where
   R: Router + fmt::Debug,
   Q: Query + fmt::Debug,
 {
-  println!("\n=== {} ===", description);
-  println!("路由结构: {:#?}", route);
-  println!("查询结构: {:#?}", query);
+  println!("\n=== {description} ===");
+  println!("路由结构: {route:#?}");
+  println!("查询结构: {query:#?}");
   println!("路径: {}", route.format());
   println!("查询: {}", query.format());
   println!("完整URL: {}", build_full_url(route, query));
@@ -321,8 +321,8 @@ fn display_route_info<R>(route: &R, description: &str)
 where
   R: Router + fmt::Debug,
 {
-  println!("\n=== {} ===", description);
-  println!("路由结构: {:#?}", route);
+  println!("\n=== {description} ===");
+  println!("路由结构: {route:#?}");
   println!("路径: {}", route.format());
 }
 
@@ -332,7 +332,7 @@ fn main() {
   // 1. 基本用户路由示例
   println!("\n1. 基本用户路由示例:");
   let user_url = "/users/123?include=profile&include=settings&include_sensitive=true&format=json";
-  println!("  URL: {}", user_url);
+  println!("  URL: {user_url}");
 
   match parse_full_url::<UserRoute, UserQuery>(user_url) {
     Ok((route, query)) => {
@@ -340,69 +340,69 @@ fn main() {
 
       // 验证往返转换
       let reconstructed = build_full_url(&route, &query);
-      println!("  往返转换: {}", reconstructed);
+      println!("  往返转换: {reconstructed}");
     }
-    Err(e) => println!("  解析失败: {}", e),
+    Err(e) => println!("  解析失败: {e}"),
   }
 
   // 2. 博客文章路由示例
   println!("\n2. 博客文章路由示例:");
   let post_url = "/blog/2024/01/rust-async-programming?include_comments=true&comment_sort=date&comment_page=2";
-  println!("  URL: {}", post_url);
+  println!("  URL: {post_url}");
 
   match parse_full_url::<PostRoute, PostQuery>(post_url) {
     Ok((route, query)) => {
       display_route_query_info(&route, &query, "博客文章路由解析结果");
     }
-    Err(e) => println!("  解析失败: {}", e),
+    Err(e) => println!("  解析失败: {e}"),
   }
 
   // 3. 用户博客路由示例（嵌套路由）
   println!("\n3. 用户博客路由示例:");
   let user_post_url = "/users/456/blog/2024/01/my-first-post?include_comments=false&include_draft=true";
-  println!("  URL: {}", user_post_url);
+  println!("  URL: {user_post_url}");
 
   match parse_full_url::<UserPostRoute, PostQuery>(user_post_url) {
     Ok((route, query)) => {
       display_route_query_info(&route, &query, "用户博客路由解析结果");
     }
-    Err(e) => println!("  解析失败: {}", e),
+    Err(e) => println!("  解析失败: {e}"),
   }
 
   // 4. API 路由示例
   println!("\n4. API 路由示例:");
   let api_url = "/api/v2?debug=true&format=xml";
-  println!("  URL: {}", api_url);
+  println!("  URL: {api_url}");
 
   match parse_full_url::<ApiRoute, ApiQuery>(api_url) {
     Ok((route, query)) => {
       display_route_query_info(&route, &query, "API 路由解析结果");
     }
-    Err(e) => println!("  解析失败: {}", e),
+    Err(e) => println!("  解析失败: {e}"),
   }
 
   // 5. API 用户路由示例（嵌套 API + 用户）
   println!("\n5. API 用户路由示例:");
   let api_user_url = "/api/v1/users/789?include=profile&include=permissions&format=json";
-  println!("  URL: {}", api_user_url);
+  println!("  URL: {api_user_url}");
 
   match parse_full_url::<ApiUserRoute, UserQuery>(api_user_url) {
     Ok((route, query)) => {
       display_route_query_info(&route, &query, "API 用户路由解析结果");
     }
-    Err(e) => println!("  解析失败: {}", e),
+    Err(e) => println!("  解析失败: {e}"),
   }
 
   // 6. 复杂嵌套路由示例
   println!("\n6. 复杂嵌套路由示例:");
   let nested_url = "/api/v3/users/100/posts/200/comments/300?version=beta&debug=false";
-  println!("  URL: {}", nested_url);
+  println!("  URL: {nested_url}");
 
   match parse_full_url::<NestedCommentRoute, ApiQuery>(nested_url) {
     Ok((route, query)) => {
       display_route_query_info(&route, &query, "复杂嵌套路由解析结果");
     }
-    Err(e) => println!("  解析失败: {}", e),
+    Err(e) => println!("  解析失败: {e}"),
   }
 
   // 7. 手动构建路由示例
@@ -443,7 +443,7 @@ fn main() {
     },
   };
 
-  println!("  组合结构: {:#?}", combined);
+  println!("  组合结构: {combined:#?}");
   println!("  路径: {}", combined.route.format());
   println!("  查询: {}", combined.query.format());
   println!("  完整URL: {}", build_full_url(&combined.route, &combined.query));
