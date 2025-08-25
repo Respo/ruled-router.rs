@@ -405,7 +405,7 @@ fn test_recursive_parsing() {
     ("/admin?format=yaml", "AdminModuleRoute"),
   ];
 
-  for (url, expected_type) in test_cases {
+  for (url, _expected_type) in test_cases {
     println!("\n测试URL: {url}");
     match parse_nested_route(url) {
       Ok(result) => println!("  解析结果: {result}"),
@@ -472,16 +472,6 @@ fn test_recursive_parsing() {
         println!("  ✗ 顶层路由解析失败: {e:?}");
       }
     }
-  }
-}
-
-/// 递归打印路由信息
-fn print_route_info(route_info: &Option<Box<ruled_router::traits::RouteInfo>>, depth: usize) {
-  if let Some(info) = route_info {
-    let indent = "  ".repeat(depth);
-    println!("{}子路由模式: {}", indent, info.pattern);
-    println!("{}子路由格式: {}", indent, info.formatted);
-    print_route_info(&info.sub_route_info, depth + 1);
   }
 }
 

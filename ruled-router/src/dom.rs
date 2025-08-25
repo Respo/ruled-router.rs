@@ -36,10 +36,23 @@ impl<T: Router + Clone + 'static> DomRouter<T> {
   ///
   /// # 示例
   ///
-  /// ```rust
+  /// ```no_run
   /// use ruled_router::dom::DomRouter;
+  /// use ruled_router::prelude::*;
+  /// use ruled_router::NoSubRouter;
+  ///
+  /// #[derive(Debug, Clone, PartialEq)]
+  /// struct MyRoute;
+  ///
+  /// impl Router for MyRoute {
+  ///     type SubRouterMatch = NoSubRouter;
+  ///     fn parse(path: &str) -> Result<Self, ParseError> { Ok(MyRoute) }
+  ///     fn format(&self) -> String { "/".to_string() }
+  ///     fn pattern() -> &'static str { "/" }
+  /// }
   ///
   /// let router = DomRouter::<MyRoute>::new()?;
+  /// # Ok::<(), wasm_bindgen::JsValue>(())
   /// ```
   pub fn new() -> Result<Self, JsValue> {
     let window = window().ok_or("无法获取 window 对象")?;
@@ -90,12 +103,26 @@ impl<T: Router + Clone + 'static> DomRouter<T> {
   ///
   /// # 示例
   ///
-  /// ```rust
+  /// ```no_run
+  /// # use ruled_router::dom::DomRouter;
+  /// # use ruled_router::prelude::*;
+  /// # use ruled_router::NoSubRouter;
+  /// # #[derive(Debug, Clone, PartialEq)]
+  /// # struct MyRoute;
+  /// # impl Router for MyRoute {
+  /// #     type SubRouterMatch = NoSubRouter;
+  /// #     fn parse(path: &str) -> Result<Self, ParseError> { Ok(MyRoute) }
+  /// #     fn format(&self) -> String { "/".to_string() }
+  /// #     fn pattern() -> &'static str { "/" }
+  /// # }
+  /// # let router = DomRouter::<MyRoute>::new()?;
+  /// # let route = MyRoute;
   /// // 添加新的历史记录条目
   /// router.navigate_to(&route, false)?;
   ///
   /// // 替换当前历史记录条目
   /// router.navigate_to(&route, true)?;
+  /// # Ok::<(), wasm_bindgen::JsValue>(())
   /// ```
   pub fn navigate_to(&self, route: &T, replace: bool) -> Result<(), JsValue> {
     let url = route.format();
@@ -138,7 +165,20 @@ impl<T: Router + Clone + 'static> DomRouter<T> {
   ///
   /// # 示例
   ///
-  /// ```rust
+  /// ```no_run
+  /// # use ruled_router::dom::DomRouter;
+  /// # use ruled_router::prelude::*;
+  /// # use ruled_router::NoSubRouter;
+  /// # use web_sys::console;
+  /// # #[derive(Debug, Clone, PartialEq)]
+  /// # struct MyRoute;
+  /// # impl Router for MyRoute {
+  /// #     type SubRouterMatch = NoSubRouter;
+  /// #     fn parse(path: &str) -> Result<Self, ParseError> { Ok(MyRoute) }
+  /// #     fn format(&self) -> String { "/".to_string() }
+  /// #     fn pattern() -> &'static str { "/" }
+  /// # }
+  /// # let router = DomRouter::<MyRoute>::new().unwrap();
   /// router.add_listener(|route: &MyRoute| {
   ///     console::log_1(&format!("路由变化: {:?}", route).into());
   /// });

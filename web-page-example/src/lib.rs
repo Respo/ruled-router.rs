@@ -4,6 +4,7 @@
 //! 包括路由监听、导航和页面渲染。
 
 use ruled_router::prelude::*;
+use ruled_router::NoSubRouter;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
@@ -20,6 +21,8 @@ enum AppRoute {
 }
 
 impl Router for AppRoute {
+  type SubRouterMatch = NoSubRouter;
+
   fn parse(path: &str) -> Result<Self, ParseError> {
     // 手动解析路径
     let (path_part, _) = if let Some(pos) = path.find('?') {
@@ -86,6 +89,8 @@ struct SearchRoute {
 }
 
 impl Router for SearchRoute {
+  type SubRouterMatch = NoSubRouter;
+
   fn parse(path: &str) -> Result<Self, ParseError> {
     let (path_part, query_part) = if let Some(pos) = path.find('?') {
       (&path[..pos], &path[pos + 1..])
