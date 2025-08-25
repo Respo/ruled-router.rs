@@ -4,6 +4,64 @@
 
 A data-oriented Rust routing library that implements zero-duplication type-safe routing through automatic prefix extraction.
 
+## 🆕 新增功能 (v0.1.1)
+
+### 🌐 DOM Feature
+
+为 Web 浏览器环境新增了完整的路由管理功能：
+
+**功能特性:**
+
+- **路由监听**: 监听浏览器前进/后退按钮事件
+- **路由跳转**: 使用 History API 进行 SPA 导航
+- **URL 管理**: 完整的 URL 解析和格式化
+- **查询参数**: 高级查询参数处理
+
+**使用方法:**
+
+```toml
+[dependencies]
+ruled-router = { version = "0.1.0", features = ["dom"] }
+```
+
+```rust
+use ruled_router::prelude::*;
+
+// 创建 DOM 路由管理器
+let mut router = DomRouter::<MyRoute>::new()?;
+
+// 添加路由变化监听器
+router.add_listener(|route: &MyRoute| {
+    // 处理路由变化
+});
+
+// 开始监听浏览器事件
+router.start_listening()?;
+
+// 导航到新路由
+router.navigate_to(&MyRoute::Home, false)?;
+```
+
+### 📱 Web Page Example
+
+新增了完整的 Web 示例项目 `web-page-example`：
+
+- **完整 SPA 演示**: 多页面单页应用
+- **WASM 编译**: 使用 `wasm-pack` 编译为 WebAssembly
+- **交互式 UI**: 现代化的 Web 界面
+- **实时路由**: 完整的路由功能展示
+
+**快速体验:**
+
+```bash
+cd web-page-example
+./build.sh
+python3 -m http.server 8000
+# 打开 http://localhost:8000
+```
+
+---
+
 ## 项目概述
 
 **Ruled Router** 采用面向数据编程范式，让你通过定义数据结构来声明路由，所有解析和格式化逻辑由宏自动生成。核心特性：
@@ -63,6 +121,7 @@ struct UserQuery {
 }
 
 fn main() {
+<<<<<<< HEAD
     // Parse route
     let path = "/users/123?tab=profile&page=2";
     let route = UserRoute::parse(path).unwrap();
@@ -246,11 +305,25 @@ fn main() {
     // Output:
     // 用户ID: 123
     // 格式: Some("json")
+=======
+    // 解析路径
+    let route = UserRoute::parse("/users/123").unwrap();
+    println!("用户 ID: {}", route.id); // 用户 ID: 123
+
+    // 格式化路径
+    let path = route.format();
+    println!("路径: {}", path); // 路径: /users/123
+
+    // 解析查询参数
+    let query = UserQuery::parse("tab=profile&active=true").unwrap();
+    println!("查询: {:?}", query);
+>>>>>>> e3cc337 (created a demo page using router)
 }
 ```
 
 ## 核心设计理念
 
+<<<<<<< HEAD
 ### 面向数据编程
 
 **Ruled Router** 采用面向数据编程范式，核心思想是"数据即代码"：
@@ -305,12 +378,19 @@ struct UserRoute { id: u32 }
 ```
 
 ### 宏驱动的代码生成
+=======
+### 1. 宏驱动的代码生成
+>>>>>>> e3cc337 (created a demo page using router)
 
 - 参考 `argh` 的实现方式，使用过程宏自动生成解析和格式化逻辑
 - 通过属性宏标注结构体字段，定义路由段的解析规则
 - 编译时生成高效的解析器代码，运行时零成本抽象
 
+<<<<<<< HEAD
 ### 结构化路由定义
+=======
+### 2. 结构化路由定义
+>>>>>>> e3cc337 (created a demo page using router)
 
 - 使用 Rust 结构体定义路由结构
 - 支持嵌套结构体组合复杂路由路径
@@ -320,6 +400,7 @@ struct UserRoute { id: u32 }
 
 ### 🎯 面向数据编程
 
+<<<<<<< HEAD
 - **数据即代码**：通过数据结构定义路由，逻辑自动生成
 - **零重复定义**：自动前缀提取，路径信息只需定义一次
 - **组合式设计**：通过结构体和枚举组合实现复杂路由
@@ -331,6 +412,26 @@ struct UserRoute { id: u32 }
 - **零维护成本**：路径变更只需修改一处，逻辑自动更新
 - **类型安全**：编译时验证路由前缀的一致性
 - **手动覆盖**：支持 `#[route]` 属性手动指定前缀（可选）
+=======
+#### 1. 路由解析 (Parse)
+
+- 将 URL 路径字符串解析为结构化的路由对象
+- 支持路径参数提取和类型转换
+- 支持可选路径段
+- 错误处理和验证
+
+#### 2. 路由格式化 (Format)
+
+- 将结构化路由对象转换为 URL 路径字符串
+- 支持参数插值
+- 保证往返一致性 (parse -> format -> parse)
+
+#### 3. 查询参数处理
+
+- 解析 URL 查询字符串
+- 支持多值参数
+- 类型转换和验证
+>>>>>>> e3cc337 (created a demo page using router)
 
 ### 🌳 递归嵌套路由
 
@@ -379,6 +480,11 @@ ruled-router = "0.1.0"
 - **Router**：具体的路由结构体，负责解析路径参数和查询参数
 - **RouterMatch**：路由匹配器枚举，负责路由分发和前缀匹配
 
+<<<<<<< HEAD
+=======
+#### 1. 嵌套路由支持
+
+>>>>>>> e3cc337 (created a demo page using router)
 ```rust
 // Router - concrete route
 #[derive(Router)]
@@ -397,6 +503,7 @@ enum AppRouterMatch {
 }
 ```
 
+<<<<<<< HEAD
 #### 属性说明
 
 - `#[router(pattern = "...")]`：定义路由模式，支持参数占位符 `:param`
@@ -412,6 +519,17 @@ enum AppRouterMatch {
 
 查看完整示例：[examples/modular_routes.rs](ruled-router/examples/modular_routes.rs)
 
+=======
+#### 2. 路径参数类型
+
+- 字符串参数: `:name`
+- 数字参数: `:id` (自动转换为 u32, i32 等)
+- 可选参数: `?:optional`
+- 通配符: `*path` (捕获剩余路径)
+
+#### 3. 查询参数集成
+
+>>>>>>> e3cc337 (created a demo page using router)
 ```rust
 // User module routes
 #[derive(Router, Debug)]
@@ -567,12 +685,26 @@ trait Query: Sized {
 - 错误处理和回退机制
 
 #### 3. 路由匹配器
+<<<<<<< HEAD
+=======
+
+- 模式匹配算法
+- 优先级处理
+- 冲突检测
+>>>>>>> e3cc337 (created a demo page using router)
 
 - 基于前缀的快速匹配算法
 - 嵌套路由递归解析
 - 优先级处理和冲突检测
 
+<<<<<<< HEAD
 ### 设计模式
+=======
+### 基本用法
+
+```rust
+use ruled_router::{Router, Query};
+>>>>>>> e3cc337 (created a demo page using router)
 
 - **面向数据编程**: 数据结构即路由定义，逻辑由宏生成
 - **组合模式**: 通过结构体和枚举组合实现复杂路由
@@ -581,6 +713,7 @@ trait Query: Sized {
 
 ### 性能优化
 
+<<<<<<< HEAD
 - **编译时代码生成**: 运行时零开销抽象
 - **自动前缀提取**: 避免运行时字符串比较
 - **零分配解析**: 使用栈上数据结构，避免堆分配
@@ -620,6 +753,31 @@ cargo run --example nested_router_usage
 ```
 
 ## 测试
+=======
+fn main() {
+    // 解析路由
+    let route = UserProfile::parse("/user/123/profile?tab=settings&edit=true").unwrap();
+    assert_eq!(route.id, 123);
+    assert_eq!(route.options.tab, Some("settings".to_string()));
+    assert_eq!(route.options.edit, Some(true));
+
+    // 格式化路由
+    let url = route.format();
+    assert_eq!(url, "/user/123/profile?tab=settings&edit=true");
+}
+```
+
+### 嵌套路由
+
+```rust
+#[derive(Router)]
+struct AppRouter {
+    #[router("/")]
+    home: HomeRoute,
+    #[router("/api/v1")]
+    api: ApiRouter,
+}
+>>>>>>> e3cc337 (created a demo page using router)
 
 运行测试套件：
 
@@ -677,6 +835,7 @@ cargo clippy -- -D warnings
 
 ### 报告问题
 
+<<<<<<< HEAD
 如果你发现了 bug 或有功能建议，请在 [GitHub Issues](https://github.com/your-username/ruled-router.rs/issues) 中创建一个 issue。
 
 ## 路线图
@@ -687,6 +846,13 @@ cargo clippy -- -D warnings
 - [ ] 支持异步路由处理
 - [ ] 添加 OpenAPI 文档生成
 - [ ] 性能基准测试和优化
+
+## 依赖项
+
+- `proc-macro2`: 宏实现
+- `quote`: 代码生成
+- `syn`: AST 解析
+- `serde` (可选): 序列化支持
 
 ## 许可证
 

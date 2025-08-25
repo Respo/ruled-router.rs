@@ -405,34 +405,11 @@ fn test_recursive_parsing() {
     ("/admin?format=yaml", "AdminModuleRoute"),
   ];
 
-  for (url, route_type) in test_cases {
-    println!("\n解析 URL: {url} (使用 {route_type})");
-
-    // 根据 URL 选择合适的路由类型进行递归解析
-    if url.starts_with("/users") {
-      match UserModuleRoute::parse_recursive(url) {
-        Ok(result) => {
-          println!("  当前路由: {:?}", result.current);
-          print_route_info(&result.sub_route_info, 1);
-        }
-        Err(e) => println!("  解析失败: {e}"),
-      }
-    } else if url.starts_with("/shop") {
-      match ShopModuleRoute::parse_recursive(url) {
-        Ok(result) => {
-          println!("  当前路由: {:?}", result.current);
-          print_route_info(&result.sub_route_info, 1);
-        }
-        Err(e) => println!("  解析失败: {e}"),
-      }
-    } else if url.starts_with("/admin") {
-      match AdminModuleRoute::parse_recursive(url) {
-        Ok(result) => {
-          println!("  当前路由: {:?}", result.current);
-          print_route_info(&result.sub_route_info, 1);
-        }
-        Err(e) => println!("  解析失败: {e}"),
-      }
+  for (url, expected_type) in test_cases {
+    println!("\n测试URL: {url}");
+    match parse_nested_route(url) {
+      Ok(result) => println!("  解析结果: {result}"),
+      Err(e) => println!("  解析失败: {e}"),
     }
   }
 
