@@ -144,6 +144,35 @@ fn generate_format_path_fields(fields: &[(syn::Ident, Type)]) -> Vec<TokenStream
   format_fields
 }
 
+/// 生成格式化子路由逻辑的代码
+fn generate_format_sub_router_logic(fields: &[RouteField]) -> TokenStream {
+  // 查找有 #[sub_router] 属性的字段
+  for (field_name, _, _, is_sub_router) in fields {
+    if *is_sub_router {
+      return quote! {
+        if let Some(ref sub_router) = self.#field_name {
+          let sub_url = sub_router.format();
+          if !sub_url.is_empty() {
+            // 移除子路由URL中的查询部分，因为我们将在最后添加基础路由的查询
+            let (sub_path_part, sub_query_part) = ::ruled_router::utils::split_path_query(&sub_url);
+            url.push_str(sub_path_part);
+            // 如果子路由有查询参数，则使用子路由的查询参数而不是基础路由的
+            if let Some(sub_query) = sub_query_part {
+              if !sub_query.is_empty() {
+                url.push('?');
+                url.push_str(sub_query);
+                return url; // 提前返回，避免添加基础路由的查询参数
+              }
+            }
+          }
+        }
+      };
+    }
+  }
+  // 如果没有子路由字段，返回空代码
+  quote! {}
+}
+
 /// 生成格式化查询逻辑的代码
 fn generate_format_query_logic(fields: &[(syn::Ident, Type)]) -> TokenStream {
   if !fields.is_empty() {
@@ -163,25 +192,32 @@ fn generate_format_query_logic(fields: &[(syn::Ident, Type)]) -> TokenStream {
 }
 
 /// 查找子路由字段的类型
-fn find_sub_router_type(struct_name: &syn::Ident) -> TokenStream {
-  let struct_name_str = struct_name.to_string();
+fn find_sub_router_type(fields: &[RouteField]) -> TokenStream {
+  // 首先检查是否有 #[sub_router] 字段
+  for (_field_name, field_type, _, is_sub_router) in fields {
+    if *is_sub_router {
+      // 如果有子路由字段，从字段类型中提取内部类型
+      if let Type::Path(type_path) = field_type {
+        if let Some(segment) = type_path.path.segments.last() {
+          if segment.ident == "Option" {
+            if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
+              if let Some(syn::GenericArgument::Type(inner_type)) = args.args.first() {
+                return quote! { #inner_type };
+              }
+            }
+          } else {
+            // 不是 Option 类型，直接返回类型
+            return quote! { #field_type };
+          }
+        }
+      }
+      // 如果无法推断，使用默认值
+      return quote! { ::ruled_router::traits::NoSubRouter };
+    }
+  }
 
-  // 根据结构体名称推断对应的 RouterMatch 类型
-  let sub_router_match_name = if struct_name_str.ends_with("CategoryRoute") {
-    let prefix = struct_name_str.strip_suffix("CategoryRoute").unwrap();
-    format!("{prefix}DetailRouterMatch")
-  } else if struct_name_str == "UserModuleRoute" {
-    "UserSubRouterMatch".to_string()
-  } else if struct_name_str == "ShopModuleRoute" {
-    "ShopSubRouterMatch".to_string()
-  } else if struct_name_str == "AdminModuleRoute" {
-    "AdminSubRouterMatch".to_string()
-  } else {
-    return quote! { ::ruled_router::traits::NoSubRouter };
-  };
-
-  let sub_router_ident = syn::Ident::new(&sub_router_match_name, struct_name.span());
-  quote! { #sub_router_ident }
+  // 如果没有子路由字段，使用默认值
+  quote! { ::ruled_router::traits::NoSubRouter }
 }
 
 /// 生成子路由字段的解析代码
@@ -209,7 +245,7 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
   let (path_fields, query_fields) = separate_fields(&fields, &param_names);
 
   // 查找子路由字段
-  let sub_router_type = find_sub_router_type(struct_name);
+  let sub_router_type = find_sub_router_type(&fields);
 
   // 生成解析逻辑
   let parse_path_fields = generate_parse_path_fields(&path_fields, &param_names)?;
@@ -219,6 +255,7 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
   // 生成格式化逻辑
   let format_path_fields = generate_format_path_fields(&path_fields);
   let format_query_logic = generate_format_query_logic(&query_fields);
+  let format_sub_router_logic = generate_format_sub_router_logic(&fields);
 
   let expanded = quote! {
       impl ::ruled_router::traits::RouterData for #struct_name {
@@ -287,11 +324,18 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
           }
 
           fn format(&self) -> String {
+              // format 方法现在调用 format_sub_router，保持向后兼容性
+              self.format_sub_router()
+          }
+
+          fn format_sub_router(&self) -> String {
               let mut params = ::std::collections::HashMap::new();
               #(#format_path_fields)*
 
               let formatter = ::ruled_router::formatter::PathFormatter::new(#pattern).unwrap();
               let mut url = formatter.format(&params).unwrap();
+
+              #format_sub_router_logic
 
               #format_query_logic
 

@@ -192,6 +192,26 @@ pub trait RouterData: Sized {
   /// ```
   fn format(&self) -> String;
 
+  /// 将路由和可能的子路由格式化为完整路径字符串
+  ///
+  /// 此方法专门用于处理包含子路由的 RouterData 结构。
+  /// 由于 RouterData 不作为顶级路由使用，此方法更适合于子路由的格式化。
+  ///
+  /// # 返回值
+  ///
+  /// 格式化后的完整 URL 路径，包括子路由和查询参数（如果有）
+  ///
+  /// # 示例
+  ///
+  /// ```rust,ignore
+  /// let url = route.format_sub_router();
+  /// assert_eq!(url, "/user/123/profile?tab=advanced");
+  /// ```
+  fn format_sub_router(&self) -> String {
+    // 默认实现：调用基本的 format 方法
+    self.format()
+  }
+
   /// 获取路由模式（用于调试和文档生成）
   ///
   /// # 返回值

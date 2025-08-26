@@ -357,3 +357,150 @@ mod tests {
     assert!(formatted.is_empty() || formatted == "?");
   }
 }
+
+/// 测试 RouterData 的 format 方法处理子路由的情况
+mod router_data_format_tests {
+  use super::*;
+  use ruled_router_derive::{Query, RouterData, RouterMatch};
+
+  #[derive(Debug, Query, PartialEq)]
+  struct TestQuery {
+    #[query(name = "tab")]
+    tab: Option<String>,
+  }
+
+  #[derive(Debug, RouterData)]
+  #[router(pattern = "/user/:id")]
+  struct UserRoute {
+    id: u32,
+    #[query]
+    query: TestQuery,
+    #[sub_router]
+    sub_router: Option<UserSubRouterMatch>,
+  }
+
+  #[derive(Debug, RouterMatch)]
+  enum UserSubRouterMatch {
+    Profile(ProfileRoute),
+    Settings(SettingsRoute),
+  }
+
+  #[derive(Debug, RouterData)]
+  #[router(pattern = "/profile")]
+  struct ProfileRoute {
+    #[query]
+    query: TestQuery,
+  }
+
+  #[derive(Debug, RouterData)]
+  #[router(pattern = "/settings")]
+  struct SettingsRoute {
+    #[query]
+    query: TestQuery,
+  }
+
+  #[test]
+  fn test_router_data_format_without_sub_route() {
+    // 测试没有子路由的情况
+    let route = UserRoute {
+      id: 123,
+      query: TestQuery {
+        tab: Some("profile".to_string()),
+      },
+      sub_router: None,
+    };
+
+    let formatted = route.format_sub_router();
+    assert_eq!(formatted, "/user/123?tab=profile");
+  }
+
+  #[test]
+  fn test_router_data_format_with_sub_route() {
+    // 测试有子路由的情况
+    let profile_route = ProfileRoute {
+      query: TestQuery {
+        tab: Some("basic".to_string()),
+      },
+    };
+
+    let route = UserRoute {
+      id: 123,
+      query: TestQuery { tab: None },
+      sub_router: Some(UserSubRouterMatch::Profile(profile_route)),
+    };
+
+    let formatted = route.format_sub_router();
+    assert_eq!(formatted, "/user/123/profile?tab=basic");
+  }
+
+  #[test]
+  fn test_router_data_format_with_settings_sub_route() {
+    // 测试设置子路由
+    let settings_route = SettingsRoute {
+      query: TestQuery {
+        tab: Some("general".to_string()),
+      },
+    };
+
+    let route = UserRoute {
+      id: 456,
+      query: TestQuery { tab: None },
+      sub_router: Some(UserSubRouterMatch::Settings(settings_route)),
+    };
+
+    let formatted = route.format_sub_router();
+    assert_eq!(formatted, "/user/456/settings?tab=general");
+  }
+
+  #[test]
+  fn test_router_data_format_roundtrip_with_sub_route() {
+    // 测试完整的解析和格式化往返
+    let original_path = "/user/789/profile?tab=advanced";
+
+    let (route, sub_match) = UserRoute::parse_with_sub(original_path).unwrap();
+    assert_eq!(route.id, 789);
+    assert!(sub_match.is_some());
+
+    // 手动构造带子路由的路由结构
+    let route_with_sub = UserRoute {
+      id: route.id,
+      query: route.query,
+      sub_router: sub_match,
+    };
+
+    let formatted = route_with_sub.format_sub_router();
+    assert_eq!(formatted, original_path);
+  }
+
+  #[test]
+  fn test_nested_route_result_format() {
+    // 测试 NestedRouteResult 的格式化
+    let original_path = "/user/999/settings?tab=security";
+
+    let result = UserRoute::parse_recursive(original_path).unwrap();
+    assert_eq!(result.current.id, 999);
+    assert!(result.sub_route_info.is_some());
+
+    // 从结果重新构造完整路由进行格式化
+    let route_with_sub = UserRoute {
+      id: result.current.id,
+      query: result.current.query,
+      sub_router: match result.sub_route_info.as_ref().map(|info| info.pattern) {
+        Some("/settings") => Some(UserSubRouterMatch::Settings(SettingsRoute {
+          query: TestQuery {
+            tab: Some("security".to_string()),
+          },
+        })),
+        Some("/profile") => Some(UserSubRouterMatch::Profile(ProfileRoute {
+          query: TestQuery {
+            tab: Some("security".to_string()),
+          },
+        })),
+        _ => None,
+      },
+    };
+
+    let formatted = route_with_sub.format_sub_router();
+    assert_eq!(formatted, original_path);
+  }
+}
