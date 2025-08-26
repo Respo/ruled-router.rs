@@ -38,7 +38,7 @@ struct SearchRoute {
 }
 
 /// 搜索参数
-#[derive(Debug, Clone, PartialEq, Default, Query)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive)]
 struct SearchParams {
   q: Option<String>,
   page: Option<u32>,
@@ -58,7 +58,7 @@ struct ModuleRoute {
 }
 
 /// 模块选项
-#[derive(Debug, Clone, PartialEq, Default, Query)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive)]
 struct ModuleOptions {
   version: Option<String>,
   debug: Option<bool>,

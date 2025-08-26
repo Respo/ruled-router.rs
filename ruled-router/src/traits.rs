@@ -111,6 +111,42 @@ pub trait RouteMatcher: Sized + ToRouteInfo {
     };
     Ok((route, remaining))
   }
+
+  /// 格式化路由结构为调试用的嵌套树形结构
+  ///
+  /// 此方法用于开发过程中验证路由结构，以树形格式显示嵌套的路由层次。
+  /// 对于复杂的嵌套路由结构，这个方法可以帮助开发者直观地理解路由的组织方式。
+  ///
+  /// # 参数
+  ///
+  /// * `indent` - 缩进级别，用于控制嵌套显示的深度
+  ///
+  /// # 返回值
+  ///
+  /// 格式化后的树形结构字符串
+  ///
+  /// # 示例
+  ///
+  /// ```rust,ignore
+  /// let route_match = AppRouterMatch::try_parse("/users/123/profile/basic")?;
+  /// println!("{}", route_match.debug_format(0));
+  /// // 输出类似：
+  /// // AppRouterMatch::User
+  /// //   ├─ UserRoute { id: 123 }
+  /// //   └─ UserSubRouterMatch::Profile
+  /// //       ├─ ProfileRoute
+  /// //       └─ ProfileDetailRouterMatch::Basic
+  /// //           └─ BasicRoute
+  /// ```
+  fn debug_format(&self, indent: usize) -> String {
+    // 默认实现：显示基本的路由信息
+    let indent_str = "  ".repeat(indent);
+    let route_info = self.to_route_info();
+    format!(
+      "{}RouterMatch\n{}├─ Pattern: {}\n{}└─ Formatted: {}",
+      indent_str, indent_str, route_info.pattern, indent_str, route_info.formatted
+    )
+  }
 }
 
 /// 空的路由匹配类型，用于没有子路由的情况
@@ -128,6 +164,11 @@ impl RouteMatcher for NoSubRouter {
 
   fn patterns() -> Vec<&'static str> {
     vec![]
+  }
+
+  fn debug_format(&self, indent: usize) -> String {
+    let indent_str = "  ".repeat(indent);
+    format!("{indent_str}NoSubRouter (empty)")
   }
 }
 
@@ -353,6 +394,16 @@ pub trait RouterData: Sized {
 
     Ok((result, remaining_path))
   }
+
+  /// 获取查询参数的字段名称列表
+  ///
+  /// # 返回值
+  ///
+  /// 包含所有查询参数字段名称的向量
+  fn query_keys() -> Vec<&'static str> {
+    // 默认实现返回空向量
+    vec![]
+  }
 }
 
 /// 查询参数解析和格式化的 trait
@@ -409,6 +460,13 @@ pub trait Query: Sized {
   ///
   /// 格式化后的查询字符串，不包含前导的 '?'
   fn to_query_string(&self) -> String;
+
+  /// 获取查询参数的字段名称列表
+  ///
+  /// # 返回值
+  ///
+  /// 包含所有查询参数字段名称的向量
+  fn query_keys() -> Vec<&'static str>;
 }
 
 /// 类型转换 trait，用于路径参数的类型转换

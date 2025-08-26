@@ -3,6 +3,7 @@
 //! 测试 ruled-router 库的性能特性
 
 use ruled_router::prelude::*;
+use ruled_router_derive::QueryDerive;
 use std::time::Instant;
 
 /// 简单的产品路由用于性能测试
@@ -14,7 +15,7 @@ struct ProductRoute {
 }
 
 /// 分页查询用于性能测试
-#[derive(Debug, Clone, PartialEq, Default, Query)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive)]
 struct PaginationQuery {
   page: Option<u32>,
   limit: Option<u32>,

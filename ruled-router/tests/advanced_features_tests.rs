@@ -222,6 +222,10 @@ impl Query for AdvancedSearchQuery {
   fn to_query_string(&self) -> String {
     self.format()
   }
+
+  fn query_keys() -> Vec<&'static str> {
+    vec!["q", "tags", "role", "page", "limit", "sort_by", "order", "active"]
+  }
 }
 
 /// 完整路由，结合路径和查询
@@ -361,9 +365,9 @@ mod tests {
 /// 测试 RouterData 的 format 方法处理子路由的情况
 mod router_data_format_tests {
   use super::*;
-  use ruled_router_derive::{Query, RouterData, RouterMatch};
+  use ruled_router_derive::{QueryDerive, RouterData, RouterMatch};
 
-  #[derive(Debug, Query, PartialEq)]
+  #[derive(Debug, QueryDerive, PartialEq)]
   struct TestQuery {
     #[query(name = "tab")]
     tab: Option<String>,

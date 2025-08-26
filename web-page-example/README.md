@@ -102,7 +102,7 @@ router.navigate_to(&AppRoute::User { id: 123 }, false)?;
 ### 查询参数
 
 ```rust
-#[derive(Debug, Clone, PartialEq, Default, Query)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive)]
 struct SearchQuery {
     q: Option<String>,
     page: Option<u32>,

@@ -23,4 +23,4 @@ pub use traits::{FromParam, NoSubRouter, Query, RouteMatcher, RouterData, ToPara
 
 // 重新导出派生宏（当启用 derive 特性时）
 #[cfg(feature = "derive")]
-pub use ruled_router_derive::{Query, QueryString, RouterData, RouterMatch};
+pub use ruled_router_derive::{QueryDerive, QueryString, RouterData, RouterMatch};

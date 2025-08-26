@@ -173,6 +173,18 @@ fn generate_format_sub_router_logic(fields: &[RouteField]) -> TokenStream {
   quote! {}
 }
 
+/// 生成查询参数字段名称的实现
+fn generate_query_keys_impl(fields: &[RouteField]) -> Vec<TokenStream> {
+  for (field_name, field_type, is_query, _) in fields {
+    if *is_query {
+      return vec![quote! {
+        <#field_type as ::ruled_router::traits::Query>::query_keys()
+      }];
+    }
+  }
+  vec![quote! { vec![] }]
+}
+
 /// 生成格式化查询逻辑的代码
 fn generate_format_query_logic(fields: &[(syn::Ident, Type)]) -> TokenStream {
   if !fields.is_empty() {
@@ -256,6 +268,7 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
   let format_path_fields = generate_format_path_fields(&path_fields);
   let format_query_logic = generate_format_query_logic(&query_fields);
   let format_sub_router_logic = generate_format_sub_router_logic(&fields);
+  let query_keys_impl = generate_query_keys_impl(&fields);
 
   let expanded = quote! {
       impl ::ruled_router::traits::RouterData for #struct_name {
@@ -345,6 +358,10 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
           fn pattern() -> &'static str {
               #pattern
           }
+
+          fn query_keys() -> Vec<&'static str> {
+               #(#query_keys_impl)*
+           }
       }
 
       impl ::ruled_router::traits::ToRouteInfo for #struct_name {

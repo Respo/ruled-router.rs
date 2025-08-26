@@ -34,3 +34,7 @@ dom = ["web-sys", "wasm-bindgen"]
 
 [dev-dependencies]
 trybuild = { workspace = true }
+
+[[example]]
+name = "debug_format_example"
+path = "../examples/debug_format_example.rs"

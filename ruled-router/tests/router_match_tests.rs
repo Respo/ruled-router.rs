@@ -4,23 +4,23 @@
 
 use ruled_router::prelude::*;
 use ruled_router::RouteMatcher;
-use ruled_router_derive::{Query, RouterData, RouterMatch};
+use ruled_router_derive::{QueryDerive, RouterData, RouterMatch};
 
 // ===== 测试用的查询参数 =====
 
-#[derive(Debug, Clone, PartialEq, Default, Query)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive)]
 struct TestQuery {
   format: Option<String>,
   debug: Option<bool>,
 }
 
-#[derive(Debug, Clone, PartialEq, Default, Query)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive)]
 struct UserQuery {
   page: Option<u32>,
   limit: Option<u32>,
 }
 
-#[derive(Debug, Clone, PartialEq, Default, Query)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive)]
 struct ProductQuery {
   category: Option<String>,
   sort: Option<String>,
@@ -307,5 +307,170 @@ mod tests {
       let question_marks = formatted.matches('?').count();
       assert!(question_marks <= 1, "Route should have at most one '?': {formatted}");
     }
+  }
+
+  // ===== debug_format 方法测试 =====
+
+  #[test]
+  fn test_router_match_debug_format_basic() {
+    // 测试基本的 debug_format 功能
+    let user_route = UserRoute {
+      id: 123,
+      query: UserQuery {
+        page: Some(1),
+        limit: Some(20),
+      },
+    };
+
+    let app_match = AppRouterMatch::User(user_route);
+    let debug_output = app_match.debug_format(0);
+
+    // 验证输出包含路由信息
+    assert!(debug_output.contains("User"));
+    assert!(debug_output.contains("/users/:id"));
+    assert!(debug_output.contains("/users/123"));
+    assert!(debug_output.contains("page=1"));
+    assert!(debug_output.contains("limit=20"));
+  }
+
+  #[test]
+  fn test_router_match_debug_format_with_indent() {
+    // 测试带缩进的 debug_format
+    let settings_route = SettingsRoute {
+      query: TestQuery {
+        format: Some("json".to_string()),
+        debug: Some(true),
+      },
+    };
+
+    let app_match = AppRouterMatch::Settings(settings_route);
+    let debug_output = app_match.debug_format(2);
+
+    // 验证缩进
+    let lines: Vec<&str> = debug_output.lines().collect();
+    for line in lines {
+      if !line.trim().is_empty() {
+        assert!(line.starts_with("  "), "Line should start with 2 spaces: '{line}'");
+      }
+    }
+
+    // 验证内容
+    assert!(debug_output.contains("Settings"));
+    assert!(debug_output.contains("/settings"));
+    assert!(debug_output.contains("format=json"));
+    assert!(debug_output.contains("debug=true"));
+  }
+
+  #[test]
+  fn test_router_match_debug_format_all_variants() {
+    // 测试所有路由变体的 debug_format
+    let routes = vec![
+      (
+        "User",
+        AppRouterMatch::User(UserRoute {
+          id: 1,
+          query: UserQuery::default(),
+        }),
+      ),
+      (
+        "Product",
+        AppRouterMatch::Product(ProductRoute {
+          category: "electronics".to_string(),
+          id: 456,
+          query: ProductQuery::default(),
+        }),
+      ),
+      (
+        "Settings",
+        AppRouterMatch::Settings(SettingsRoute {
+          query: TestQuery::default(),
+        }),
+      ),
+      (
+        "Api",
+        AppRouterMatch::Api(ApiRoute {
+          version: "v1".to_string(),
+          endpoint: "users".to_string(),
+          query: TestQuery::default(),
+        }),
+      ),
+    ];
+
+    for (variant_name, route) in routes {
+      let debug_output = route.debug_format(0);
+
+      // 每个变体都应该包含其名称
+      assert!(
+        debug_output.contains(variant_name),
+        "Debug output should contain variant name '{variant_name}': {debug_output}"
+      );
+
+      // 应该包含模式信息
+      assert!(
+        debug_output.contains("Pattern:"),
+        "Debug output should contain 'Pattern:': {debug_output}"
+      );
+
+      // 应该包含格式化信息
+      assert!(
+        debug_output.contains("Formatted:"),
+        "Debug output should contain 'Formatted:': {debug_output}"
+      );
+    }
+  }
+
+  #[test]
+  fn test_sub_router_match_debug_format() {
+    // 测试子路由匹配器的 debug_format
+    let user_route = UserRoute {
+      id: 789,
+      query: UserQuery {
+        page: Some(3),
+        limit: Some(15),
+      },
+    };
+
+    let sub_match = SubRouterMatch::User(user_route);
+    let debug_output = sub_match.debug_format(1);
+
+    // 验证缩进
+    let lines: Vec<&str> = debug_output.lines().collect();
+    for line in lines {
+      if !line.trim().is_empty() {
+        assert!(line.starts_with(" "), "Line should start with 1 space: '{line}'");
+      }
+    }
+
+    // 验证内容
+    assert!(debug_output.contains("User"));
+    assert!(debug_output.contains("/users/789"));
+    assert!(debug_output.contains("page=3"));
+    assert!(debug_output.contains("limit=15"));
+  }
+
+  #[test]
+  fn test_router_match_debug_format_empty_query() {
+    // 测试空查询参数的 debug_format
+    let user_route = UserRoute {
+      id: 999,
+      query: UserQuery::default(),
+    };
+
+    let app_match = AppRouterMatch::User(user_route);
+    let debug_output = app_match.debug_format(0);
+
+    // 验证输出格式
+    assert!(debug_output.contains("User"));
+    assert!(debug_output.contains("/users/:id"));
+    assert!(debug_output.contains("/users/999"));
+
+    // 空查询参数时，格式化输出应该只包含路径
+    let lines: Vec<&str> = debug_output.lines().collect();
+    let formatted_line = lines.iter().find(|line| line.contains("Formatted:")).unwrap();
+    assert!(formatted_line.contains("/users/999"));
+    assert!(
+      !formatted_line.contains("?"),
+      "Should not contain query separator when query is empty"
+    );
   }
 }

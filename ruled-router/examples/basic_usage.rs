@@ -1,4 +1,5 @@
 use ruled_router::prelude::*;
+use ruled_router_derive::QueryDerive;
 
 // Define route structure
 #[derive(RouterData)]
@@ -10,7 +11,7 @@ struct UserRoute {
 }
 
 // Define query parameters
-#[derive(Query)]
+#[derive(QueryDerive)]
 struct UserQuery {
   #[query(name = "tab")]
   tab: Option<String>,

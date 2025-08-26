@@ -280,6 +280,65 @@ fn generate_to_route_info_impl(variants: &[&Variant]) -> syn::Result<TokenStream
   Ok(expanded_impl)
 }
 
+/// 生成 debug_format 方法的实现
+fn generate_debug_format_impl(input: &DeriveInput, variants: &[&Variant]) -> syn::Result<TokenStream> {
+  let enum_name = &input.ident;
+  let mut match_arms = Vec::new();
+
+  for variant in variants {
+    let variant_name = &variant.ident;
+    let route_type = extract_route_type(variant)?;
+
+    let match_arm = quote! {
+      Self::#variant_name(route) => {
+        let indent_str = "  ".repeat(indent);
+        let mut result = format!("{}{}::{}", indent_str, stringify!(#enum_name), stringify!(#variant_name));
+
+        // 添加精简的路由信息
+        result.push_str(&format!("\n{}├─ Pattern: {}", indent_str, #route_type::pattern()));
+
+        // 添加格式化的路径
+        let formatted = route.format();
+        result.push_str(&format!("\n{}├─ Formatted: {}", indent_str, formatted));
+
+        // 检查是否有查询参数，如果有则显示参数名称
+        if formatted.contains('?') {
+          let query_keys = #route_type::query_keys();
+          if !query_keys.is_empty() {
+            let keys_str = query_keys.join(", ");
+            result.push_str(&format!("\n{}├─ Query: {}", indent_str, keys_str));
+          } else {
+            result.push_str(&format!("\n{}├─ Query: ∅", indent_str));
+          }
+        }
+
+        // 尝试获取子路由信息
+        if let Ok((_, sub_match)) = #route_type::parse_with_sub(&route.format()) {
+          if let Some(sub) = sub_match {
+            result.push_str(&format!("\n{}└─ Sub:", indent_str));
+            result.push_str(&format!("\n{}", sub.debug_format(indent + 1)));
+          } else {
+            result.push_str(&format!("\n{}└─ ◉", indent_str));
+          }
+        } else {
+          result.push_str(&format!("\n{}└─ ◉", indent_str));
+        }
+
+        result
+      }
+    };
+    match_arms.push(match_arm);
+  }
+
+  Ok(quote! {
+    fn debug_format(&self, indent: usize) -> String {
+      match self {
+        #(#match_arms)*
+      }
+    }
+  })
+}
+
 /// 主要的 RouterMatch 派生宏实现
 pub fn expand_router_match_derive(input: DeriveInput) -> syn::Result<TokenStream> {
   let name = &input.ident;
@@ -295,6 +354,7 @@ pub fn expand_router_match_derive(input: DeriveInput) -> syn::Result<TokenStream
   let patterns_impl = generate_patterns_impl(&variants)?;
   let try_parse_with_remaining_impl = generate_try_parse_with_remaining_impl(&input, &variants)?;
   let to_route_info_impl = generate_to_route_info_impl(&variants)?;
+  let debug_format_impl = generate_debug_format_impl(&input, &variants)?;
 
   let expanded = quote! {
     impl ::ruled_router::traits::RouteMatcher for #name {
@@ -305,6 +365,8 @@ pub fn expand_router_match_derive(input: DeriveInput) -> syn::Result<TokenStream
       #patterns_impl
 
       #try_parse_with_remaining_impl
+
+      #debug_format_impl
     }
 
     impl ::ruled_router::traits::ToRouteInfo for #name {

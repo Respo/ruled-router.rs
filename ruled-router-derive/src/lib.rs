@@ -59,16 +59,16 @@ pub fn derive_router(input: TokenStream) -> TokenStream {
 /// # Example
 ///
 /// ```rust
-/// use ruled_router_derive::Query;
+/// use ruled_router_derive::QueryDerive;
 /// use ruled_router::traits::Query;
 ///
-/// #[derive(Query)]
+/// #[derive(QueryDerive)]
 /// struct SearchQuery {
 ///     q: Option<String>,
 ///     page: Option<u32>,
 /// }
 /// ```
-#[proc_macro_derive(Query, attributes(query))]
+#[proc_macro_derive(QueryDerive, attributes(query))]
 pub fn derive_query(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
   expand_query_derive(input).unwrap_or_else(syn::Error::into_compile_error).into()

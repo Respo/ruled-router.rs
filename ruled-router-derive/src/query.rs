@@ -18,6 +18,9 @@ pub fn expand_query_derive(input: DeriveInput) -> syn::Result<TokenStream> {
   // 生成 from_query_map 解析逻辑
   let from_query_map_fields = generate_from_query_map_fields(&fields)?;
 
+  // 生成 query_keys 方法
+  let query_keys: Vec<_> = fields.iter().map(|field| &field.query_name).collect();
+
   let expanded = quote! {
       impl ::ruled_router::traits::Query for #struct_name {
           fn parse(query: &str) -> Result<Self, ::ruled_router::error::ParseError> {
@@ -44,6 +47,10 @@ pub fn expand_query_derive(input: DeriveInput) -> syn::Result<TokenStream> {
 
           fn to_query_string(&self) -> String {
               self.format()
+          }
+
+          fn query_keys() -> Vec<&'static str> {
+              vec![#(#query_keys),*]
           }
       }
   };

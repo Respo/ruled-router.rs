@@ -1,8 +1,8 @@
 use ruled_router::prelude::*;
 use ruled_router::RouteMatcher;
-use ruled_router_derive::{Query, RouterData, RouterMatch};
+use ruled_router_derive::{QueryDerive, RouterData, RouterMatch};
 
-#[derive(Debug, Clone, PartialEq, Default, Query)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive)]
 struct SimpleQuery {
   #[query(name = "format")]
   format: Option<String>,

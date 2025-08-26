@@ -1,6 +1,6 @@
 use ruled_router::prelude::*;
 use ruled_router::RouteMatcher;
-use ruled_router_derive::RouterMatch;
+use ruled_router_derive::{QueryDerive, RouterData, RouterMatch};
 
 // Simple two-level nested routing example
 #[derive(Debug, RouterMatch)]
@@ -57,13 +57,13 @@ struct BlogPostRoute {
   query: BlogQuery,
 }
 
-#[derive(Debug, Query)]
+#[derive(Debug, QueryDerive)]
 struct UserQuery {
   #[query(name = "tab")]
   tab: Option<String>,
 }
 
-#[derive(Debug, Query)]
+#[derive(Debug, QueryDerive)]
 struct BlogQuery {
   #[query(name = "format")]
   format: Option<String>,

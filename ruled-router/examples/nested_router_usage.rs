@@ -14,7 +14,7 @@ use ruled_router_derive::RouterMatch;
 
 // ===== 查询参数定义 =====
 
-#[derive(Debug, Clone, PartialEq, Default, Query)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive)]
 struct SimpleQuery {
   #[query(name = "format")]
   format: Option<String>,

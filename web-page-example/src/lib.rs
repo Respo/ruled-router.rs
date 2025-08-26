@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use ruled_router::prelude::*;
 use ruled_router::RouteMatcher;
-use ruled_router_derive::RouterMatch;
+use ruled_router_derive::{QueryDerive, RouterMatch};
 use serde::Serialize;
 
 use wasm_bindgen::prelude::*;
@@ -500,14 +500,14 @@ struct AdminSystemBackupRoute {
 }
 
 /// 简单查询参数
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Query)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, QueryDerive)]
 struct SimpleQuery {
   #[query(name = "format")]
   format: Option<String>,
 }
 
 /// 搜索查询参数
-#[derive(Debug, Clone, PartialEq, Default, Query, Serialize)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive, Serialize)]
 struct SearchQuery {
   q: Option<String>,
   page: Option<u32>,

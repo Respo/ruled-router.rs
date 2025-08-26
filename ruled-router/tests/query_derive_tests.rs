@@ -3,9 +3,10 @@
 //! 测试 #[derive(Query)] 宏的各种功能，包括自动字段映射和类型转换
 
 use ruled_router::prelude::*;
+use ruled_router_derive::QueryDerive;
 
 /// 基础查询参数测试
-#[derive(Debug, Clone, PartialEq, Default, Query)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive)]
 struct SearchQuery {
   q: Option<String>,
   page: Option<u32>,
@@ -14,7 +15,7 @@ struct SearchQuery {
 }
 
 /// 过滤查询参数测试
-#[derive(Debug, Clone, PartialEq, Default, Query)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive)]
 struct FilterQuery {
   active: Option<bool>,
   sort_by: Option<String>,
@@ -25,7 +26,7 @@ struct FilterQuery {
 }
 
 /// 复杂查询参数测试
-#[derive(Debug, Clone, PartialEq, Default, Query)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive)]
 struct ComplexQuery {
   // 字符串类型
   query: Option<String>,
@@ -56,7 +57,7 @@ struct ComplexQuery {
 }
 
 /// 带自定义字段名的查询参数测试（使用标准字段名）
-#[derive(Debug, Clone, PartialEq, Default, Query)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive)]
 struct CustomFieldQuery {
   q: Option<String>,
   p: Option<u32>,
@@ -65,7 +66,7 @@ struct CustomFieldQuery {
 }
 
 /// 带默认值的查询参数测试
-#[derive(Debug, Clone, PartialEq, Query)]
+#[derive(Debug, Clone, PartialEq, QueryDerive)]
 struct DefaultValueQuery {
   #[query(name = "page", default = "1")]
   page: u32,
@@ -87,7 +88,7 @@ struct DefaultValueQuery {
 }
 
 /// 嵌套查询参数测试
-#[derive(Debug, Clone, PartialEq, Default, Query)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive)]
 struct NestedQuery {
   // 基础字段
   query: Option<String>,

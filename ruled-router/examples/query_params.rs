@@ -1,5 +1,7 @@
 use ruled_router::prelude::*;
+use ruled_router_derive::{QueryDerive, RouterData};
 
+/// 查询参数结构体
 #[derive(RouterData)]
 #[router(pattern = "/search")]
 struct SearchRoute {
@@ -7,7 +9,7 @@ struct SearchRoute {
   query: ListQuery,
 }
 
-#[derive(Debug, Query)]
+#[derive(Debug, QueryDerive)]
 struct ListQuery {
   #[query(name = "page", default = "1")]
   page: u32,

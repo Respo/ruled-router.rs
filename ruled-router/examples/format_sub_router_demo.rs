@@ -1,7 +1,7 @@
 use ruled_router::prelude::*;
-use ruled_router_derive::{Query, RouterData, RouterMatch};
+use ruled_router_derive::{QueryDerive, RouterData, RouterMatch};
 
-#[derive(Debug, Query, PartialEq)]
+#[derive(Debug, QueryDerive, PartialEq)]
 struct TestQuery {
   #[query(name = "tab")]
   tab: Option<String>,
