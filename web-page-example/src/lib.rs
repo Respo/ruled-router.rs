@@ -270,9 +270,9 @@ enum BlogCategoriesDetailMatch {
 /// 博客归档详细路由匹配器 - 第三层 RouteMatcher
 #[derive(Debug, Clone, PartialEq, Serialize, RouterMatch)]
 enum BlogArchivesDetailMatch {
-  ByYear(BlogArchivesByYearRoute),
-  ByMonth(BlogArchivesByMonthRoute),
-  ByTag(BlogArchivesByTagRoute),
+  Year(BlogArchivesByYearRoute),
+  Month(BlogArchivesByMonthRoute),
+  Tag(BlogArchivesByTagRoute),
 }
 
 /// 管理用户详细路由匹配器 - 第三层 RouteMatcher

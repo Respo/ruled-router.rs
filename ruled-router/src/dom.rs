@@ -16,6 +16,8 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{console, window, Document, Event, History, HtmlElement, Location};
 
+type RouterListeners<T> = Rc<RefCell<Vec<Box<dyn Fn(&T)>>>>;
+
 /// DOM 路由管理器
 ///
 /// 负责管理浏览器路由的监听和跳转功能
@@ -24,7 +26,7 @@ pub struct DomRouter<T: RouterData> {
   history: History,
   location: Location,
   _phantom: PhantomData<T>,
-  listeners: Rc<RefCell<Vec<Box<dyn Fn(&T)>>>>,
+  listeners: RouterListeners<T>,
 }
 
 impl<T: RouterData + Clone + 'static> DomRouter<T> {
