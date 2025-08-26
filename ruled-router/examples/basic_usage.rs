@@ -1,7 +1,7 @@
 use ruled_router::prelude::*;
 
 // Define route structure
-#[derive(Router)]
+#[derive(RouterData)]
 #[router(pattern = "/users/:id")] // Define path pattern only once
 struct UserRoute {
   id: u32,

@@ -1,6 +1,6 @@
 use ruled_router::prelude::*;
 
-#[derive(Router)]
+#[derive(RouterData)]
 #[router(pattern = "/search")]
 struct SearchRoute {
   #[query]

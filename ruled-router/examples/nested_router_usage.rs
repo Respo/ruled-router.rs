@@ -34,7 +34,7 @@ enum AppRouterMatch {
 // ===== 第二层：模块路由 =====
 
 /// 用户模块路由 - 第二层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/users")]
 struct UserModuleRoute {
   #[query]
@@ -44,7 +44,7 @@ struct UserModuleRoute {
 }
 
 /// 商店模块路由 - 第二层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/shop")]
 struct ShopModuleRoute {
   #[query]
@@ -54,7 +54,7 @@ struct ShopModuleRoute {
 }
 
 /// 管理模块路由 - 第二层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/admin")]
 struct AdminModuleRoute {
   #[query]
@@ -89,7 +89,7 @@ enum AdminSubRouterMatch {
 // ===== 第三层：分类路由 =====
 
 /// 用户个人分类路由 - 第三层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/profile")]
 struct UserProfileCategoryRoute {
   #[query]
@@ -99,7 +99,7 @@ struct UserProfileCategoryRoute {
 }
 
 /// 用户内容分类路由 - 第三层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/content")]
 struct UserContentCategoryRoute {
   #[query]
@@ -109,7 +109,7 @@ struct UserContentCategoryRoute {
 }
 
 /// 商店产品分类路由 - 第三层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/products")]
 struct ShopProductCategoryRoute {
   #[query]
@@ -119,7 +119,7 @@ struct ShopProductCategoryRoute {
 }
 
 /// 商店订单分类路由 - 第三层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/orders")]
 struct ShopOrderCategoryRoute {
   #[query]
@@ -129,7 +129,7 @@ struct ShopOrderCategoryRoute {
 }
 
 /// 管理用户分类路由 - 第三层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/users")]
 struct AdminUserCategoryRoute {
   #[query]
@@ -139,7 +139,7 @@ struct AdminUserCategoryRoute {
 }
 
 /// 管理系统分类路由 - 第三层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/system")]
 struct AdminSystemCategoryRoute {
   #[query]
@@ -192,7 +192,7 @@ enum AdminSystemDetailRouterMatch {
 // ===== 第四层：详细路由 =====
 
 /// 用户基本信息路由 - 第四层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/basic/:id")]
 struct UserBasicInfoRoute {
   id: u32,
@@ -201,7 +201,7 @@ struct UserBasicInfoRoute {
 }
 
 /// 用户设置路由 - 第四层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/settings/:id")]
 struct UserSettingsRoute {
   id: u32,
@@ -210,7 +210,7 @@ struct UserSettingsRoute {
 }
 
 /// 用户文章路由 - 第四层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/posts/:user_id/:post_id")]
 struct UserPostRoute {
   user_id: u32,
@@ -220,7 +220,7 @@ struct UserPostRoute {
 }
 
 /// 用户评论路由 - 第四层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/comments/:user_id/:comment_id")]
 struct UserCommentRoute {
   user_id: u32,
@@ -230,7 +230,7 @@ struct UserCommentRoute {
 }
 
 /// 产品详情路由 - 第四层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/detail/:category/:id")]
 struct ProductDetailRoute {
   category: String,
@@ -240,7 +240,7 @@ struct ProductDetailRoute {
 }
 
 /// 产品列表路由 - 第四层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/list/:category")]
 struct ProductListRoute {
   category: String,
@@ -249,7 +249,7 @@ struct ProductListRoute {
 }
 
 /// 订单详情路由 - 第四层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/detail/:id")]
 struct OrderDetailRoute {
   id: u32,
@@ -258,7 +258,7 @@ struct OrderDetailRoute {
 }
 
 /// 管理员用户管理路由 - 第四层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/manage/:id")]
 struct AdminUserManageRoute {
   id: u32,
@@ -267,7 +267,7 @@ struct AdminUserManageRoute {
 }
 
 /// 系统配置路由 - 第四层 Router
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/config")]
 struct SystemConfigRoute {
   #[query]

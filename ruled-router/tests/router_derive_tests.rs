@@ -5,14 +5,14 @@
 use ruled_router::prelude::*;
 
 /// 基础路由测试
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/users/:id")]
 struct UserRoute {
   id: u32,
 }
 
 /// 多参数路由测试
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/blog/:category/:slug")]
 struct BlogRoute {
   category: String,
@@ -20,7 +20,7 @@ struct BlogRoute {
 }
 
 /// 复杂 API 路由测试
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/api/:version/users/:user_id/posts/:post_id")]
 struct ApiRoute {
   version: String,
@@ -29,7 +29,7 @@ struct ApiRoute {
 }
 
 /// 带查询参数的路由测试
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/search/:category")]
 struct SearchRoute {
   category: String,
@@ -47,7 +47,7 @@ struct SearchParams {
 }
 
 /// 嵌套路由测试（带子路由）
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/modules/:name")]
 struct ModuleRoute {
   name: String,

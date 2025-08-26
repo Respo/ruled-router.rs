@@ -8,7 +8,7 @@
 //! 只有在启用 `dom` feature 时才会编译此模块。
 
 use crate::error::ParseError;
-use crate::traits::Router;
+use crate::traits::RouterData;
 use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::rc::Rc;
@@ -20,14 +20,14 @@ use web_sys::{console, window, Document, Event, History, HtmlElement, Location};
 ///
 /// 负责管理浏览器路由的监听和跳转功能
 #[derive(Clone)]
-pub struct DomRouter<T: Router> {
+pub struct DomRouter<T: RouterData> {
   history: History,
   location: Location,
   _phantom: PhantomData<T>,
   listeners: Rc<RefCell<Vec<Box<dyn Fn(&T)>>>>,
 }
 
-impl<T: Router + Clone + 'static> DomRouter<T> {
+impl<T: RouterData + Clone + 'static> DomRouter<T> {
   /// 创建新的 DOM 路由管理器
   ///
   /// # 返回值
@@ -44,7 +44,7 @@ impl<T: Router + Clone + 'static> DomRouter<T> {
   /// #[derive(Debug, Clone, PartialEq)]
   /// struct MyRoute;
   ///
-  /// impl Router for MyRoute {
+  /// impl RouterData for MyRoute {
   ///     type SubRouterMatch = NoSubRouter;
   ///     fn parse(path: &str) -> Result<Self, ParseError> { Ok(MyRoute) }
   ///     fn format(&self) -> String { "/".to_string() }
@@ -109,7 +109,7 @@ impl<T: Router + Clone + 'static> DomRouter<T> {
   /// # use ruled_router::NoSubRouter;
   /// # #[derive(Debug, Clone, PartialEq)]
   /// # struct MyRoute;
-  /// # impl Router for MyRoute {
+  /// # impl RouterData for MyRoute {
   /// #     type SubRouterMatch = NoSubRouter;
   /// #     fn parse(path: &str) -> Result<Self, ParseError> { Ok(MyRoute) }
   /// #     fn format(&self) -> String { "/".to_string() }
@@ -172,7 +172,7 @@ impl<T: Router + Clone + 'static> DomRouter<T> {
   /// # use web_sys::console;
   /// # #[derive(Debug, Clone, PartialEq)]
   /// # struct MyRoute;
-  /// # impl Router for MyRoute {
+  /// # impl RouterData for MyRoute {
   /// #     type SubRouterMatch = NoSubRouter;
   /// #     fn parse(path: &str) -> Result<Self, ParseError> { Ok(MyRoute) }
   /// #     fn format(&self) -> String { "/".to_string() }
@@ -285,7 +285,7 @@ pub mod helpers {
 }
 
 /// 为 DOM 路由管理器实现 Default trait
-impl<T: Router + Clone + 'static> Default for DomRouter<T> {
+impl<T: RouterData + Clone + 'static> Default for DomRouter<T> {
   fn default() -> Self {
     Self::new().expect("无法创建 DomRouter")
   }

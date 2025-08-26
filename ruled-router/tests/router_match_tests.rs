@@ -4,7 +4,7 @@
 
 use ruled_router::prelude::*;
 use ruled_router::RouteMatcher;
-use ruled_router_derive::{Query, Router, RouterMatch};
+use ruled_router_derive::{Query, RouterData, RouterMatch};
 
 // ===== 测试用的查询参数 =====
 
@@ -30,7 +30,7 @@ struct ProductQuery {
 // ===== 测试用的路由结构 =====
 
 /// 简单的用户路由
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/users/:id")]
 struct UserRoute {
   id: u32,
@@ -39,7 +39,7 @@ struct UserRoute {
 }
 
 /// 产品路由
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/products/:category/:id")]
 struct ProductRoute {
   category: String,
@@ -49,7 +49,7 @@ struct ProductRoute {
 }
 
 /// 设置路由
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/settings")]
 struct SettingsRoute {
   #[query]
@@ -57,7 +57,7 @@ struct SettingsRoute {
 }
 
 /// API 路由
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/api/:version/:endpoint")]
 struct ApiRoute {
   version: String,

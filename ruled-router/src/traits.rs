@@ -37,8 +37,13 @@ pub trait ToRouteInfo {
 
 /// 路由匹配选择的 trait
 ///
-/// 实现此 trait 的枚举类型表示从多个可能的路由中选择一个匹配的路由。
-/// 这是嵌套路由系统的核心，支持 RouteMatcher > Router > RouteMatcher > Router 的结构。
+/// **这是顶层路由的推荐实现方式。** 实现此 trait 的枚举类型表示从多个可能的路由中选择一个匹配的路由。
+/// 这是嵌套路由系统的核心，支持 RouteMatcher > RouterData > RouteMatcher > RouterData 的结构。
+///
+/// # 用法
+///
+/// - 使用 `#[derive(RouterMatch)]` 为包含多个 RouterData 的 enum 实现此 trait
+/// - 通常用作应用程序的根路由器，管理所有顶层路由
 pub trait RouteMatcher: Sized + ToRouteInfo {
   /// 尝试从路径解析出匹配的路由
   ///
@@ -138,9 +143,17 @@ impl ToRouteInfo for NoSubRouter {
 
 /// 路由解析和格式化的核心 trait
 ///
+/// **注意**: `RouterData` 用于定义单个路由类型，不能直接用作顶层路由。
+/// 顶层路由应该使用实现了 `RouteMatcher` trait 的 enum 结构。
+///
 /// 实现此 trait 的类型可以从 URL 路径字符串解析，也可以格式化为路径字符串。
 /// 支持嵌套路由结构，通过 SubRouterMatch 关联类型定义子路由。
-pub trait Router: Sized {
+///
+/// # 用法
+///
+/// - 使用 `#[derive(RouterData)]` 为单个路由结构体实现此 trait
+/// - 顶层路由使用 `#[derive(RouterMatch)]` 的 enum 来组合多个 RouterData
+pub trait RouterData: Sized {
   /// 子路由匹配类型
   ///
   /// 如果路由支持子路由，则定义为具体的 RouterMatch 类型；
@@ -159,7 +172,7 @@ pub trait Router: Sized {
   /// # 示例
   ///
   /// ```rust,ignore
-  /// use ruled_router::Router;
+  /// use ruled_router::RouterData;
   ///
   /// let route = MyRoute::parse("/user/123?tab=profile")?;
   /// ```

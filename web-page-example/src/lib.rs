@@ -54,7 +54,7 @@ enum AppRoute {
 }
 
 /// 应用根路由器 - 包装 AppRoute 以符合 DomRouter 的要求
-#[derive(Debug, Clone, Router)]
+#[derive(Debug, Clone, RouterData)]
 #[router(pattern = "/")]
 struct AppRouter {
   #[sub_router]
@@ -62,7 +62,7 @@ struct AppRouter {
 }
 
 /// 首页路由
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/")]
 struct HomeRoute {
   #[query]
@@ -70,7 +70,7 @@ struct HomeRoute {
 }
 
 /// 用户模块路由 - 第一层 Router
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/users")]
 struct UserModuleRoute {
   #[query]
@@ -80,7 +80,7 @@ struct UserModuleRoute {
 }
 
 /// 博客模块路由 - 第一层 Router
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/blog")]
 struct BlogModuleRoute {
   #[query]
@@ -90,7 +90,7 @@ struct BlogModuleRoute {
 }
 
 /// 管理模块路由 - 第一层 Router
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/admin")]
 struct AdminModuleRoute {
   #[query]
@@ -100,7 +100,7 @@ struct AdminModuleRoute {
 }
 
 /// 搜索路由
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/search")]
 struct SearchRoute {
   #[query]
@@ -136,7 +136,7 @@ enum AdminSubRouterMatch {
 // ===== 第二层：子路由结构 =====
 
 /// 用户个人资料路由 - 第二层 Router
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/profile")]
 struct UserProfileRoute {
   #[query]
@@ -146,7 +146,7 @@ struct UserProfileRoute {
 }
 
 /// 用户文章路由 - 第二层 Router
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/posts")]
 struct UserPostsRoute {
   #[query]
@@ -156,7 +156,7 @@ struct UserPostsRoute {
 }
 
 /// 用户设置路由 - 第二层 Router
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/settings")]
 struct UserSettingsRoute {
   #[query]
@@ -166,7 +166,7 @@ struct UserSettingsRoute {
 }
 
 /// 博客文章路由 - 第二层 Router
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/posts")]
 struct BlogPostsRoute {
   #[query]
@@ -176,7 +176,7 @@ struct BlogPostsRoute {
 }
 
 /// 博客分类路由 - 第二层 Router
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/categories")]
 struct BlogCategoriesRoute {
   #[query]
@@ -186,7 +186,7 @@ struct BlogCategoriesRoute {
 }
 
 /// 博客归档路由 - 第二层 Router
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/archives")]
 struct BlogArchivesRoute {
   #[query]
@@ -196,7 +196,7 @@ struct BlogArchivesRoute {
 }
 
 /// 管理用户路由 - 第二层 Router
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/users")]
 struct AdminUsersRoute {
   #[query]
@@ -206,7 +206,7 @@ struct AdminUsersRoute {
 }
 
 /// 管理内容路由 - 第二层 Router
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/content")]
 struct AdminContentRoute {
   #[query]
@@ -216,7 +216,7 @@ struct AdminContentRoute {
 }
 
 /// 管理系统路由 - 第二层 Router
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/system")]
 struct AdminSystemRoute {
   #[query]
@@ -302,21 +302,21 @@ enum AdminSystemDetailMatch {
 // ===== 第三层：具体路由结构（叶子节点）=====
 
 // 用户个人资料相关路由
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/basic")]
 struct UserProfileBasicRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/avatar")]
 struct UserProfileAvatarRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/security")]
 struct UserProfileSecurityRoute {
   #[query]
@@ -324,21 +324,21 @@ struct UserProfileSecurityRoute {
 }
 
 // 用户文章相关路由
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/list")]
 struct UserPostsListRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/draft")]
 struct UserPostsDraftRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/published")]
 struct UserPostsPublishedRoute {
   #[query]
@@ -346,21 +346,21 @@ struct UserPostsPublishedRoute {
 }
 
 // 用户设置相关路由
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/general")]
 struct UserSettingsGeneralRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/privacy")]
 struct UserSettingsPrivacyRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/notifications")]
 struct UserSettingsNotificationsRoute {
   #[query]
@@ -368,21 +368,21 @@ struct UserSettingsNotificationsRoute {
 }
 
 // 博客文章相关路由
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/recent")]
 struct BlogPostsRecentRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/popular")]
 struct BlogPostsPopularRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/featured")]
 struct BlogPostsFeaturedRoute {
   #[query]
@@ -390,21 +390,21 @@ struct BlogPostsFeaturedRoute {
 }
 
 // 博客分类相关路由
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/tech")]
 struct BlogCategoriesTechRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/lifestyle")]
 struct BlogCategoriesLifestyleRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/business")]
 struct BlogCategoriesBusinessRoute {
   #[query]
@@ -412,21 +412,21 @@ struct BlogCategoriesBusinessRoute {
 }
 
 // 博客归档相关路由
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/by-year")]
 struct BlogArchivesByYearRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/by-month")]
 struct BlogArchivesByMonthRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/by-tag")]
 struct BlogArchivesByTagRoute {
   #[query]
@@ -434,21 +434,21 @@ struct BlogArchivesByTagRoute {
 }
 
 // 管理用户相关路由
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/list")]
 struct AdminUsersListRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/roles")]
 struct AdminUsersRolesRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/permissions")]
 struct AdminUsersPermissionsRoute {
   #[query]
@@ -456,21 +456,21 @@ struct AdminUsersPermissionsRoute {
 }
 
 // 管理内容相关路由
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/posts")]
 struct AdminContentPostsRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/pages")]
 struct AdminContentPagesRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/media")]
 struct AdminContentMediaRoute {
   #[query]
@@ -478,21 +478,21 @@ struct AdminContentMediaRoute {
 }
 
 // 管理系统相关路由
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/config")]
 struct AdminSystemConfigRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/logs")]
 struct AdminSystemLogsRoute {
   #[query]
   query: SimpleQuery,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Router)]
+#[derive(Debug, Clone, PartialEq, Serialize, RouterData)]
 #[router(pattern = "/backup")]
 struct AdminSystemBackupRoute {
   #[query]
@@ -580,7 +580,7 @@ impl App {
             if let Some(new_route) = app_router.sub_router {
               // 检查是否与内存状态不一致
               let current_state_route = app_state.borrow().get_route().clone();
-              if &current_state_route != &new_route {
+              if current_state_route != new_route {
                 console::log_1(&format!("状态不一致，更新内存状态: {new_route:?}").into());
 
                 // 更新内存状态

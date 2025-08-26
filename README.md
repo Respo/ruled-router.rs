@@ -95,6 +95,27 @@ python3 -m http.server 8000
 ruled-router = "0.1.0"
 ```
 
+## 重要概念说明
+
+### RouterData vs RouterMatch
+
+- **RouterData**: 用于定义单个路由类型，不能直接用作顶层路由
+- **RouterMatch**: 用于顶层路由，通过 enum 组合多个 RouterData
+
+```rust
+// ❌ 错误：RouterData 不能直接用作顶层路由
+#[derive(RouterData)]
+#[router(pattern = "/users/:id")]
+struct UserRoute { id: u32 }
+
+// ✅ 正确：使用 RouterMatch enum 作为顶层路由
+#[derive(RouterMatch)]
+enum AppRouter {
+    User(UserRoute),  // 自动提取 "/users" 前缀
+    // ... 其他路由
+}
+```
+
 ### 基本用法：单层路由
 
 查看完整示例：[examples/basic_usage.rs](ruled-router/examples/basic_usage.rs)
@@ -324,6 +345,7 @@ fn main() {
 ## 核心设计理念
 
 <<<<<<< HEAD
+
 ### 面向数据编程
 
 **Ruled Router** 采用面向数据编程范式，核心思想是"数据即代码"：
@@ -378,19 +400,26 @@ struct UserRoute { id: u32 }
 ```
 
 ### 宏驱动的代码生成
+
 =======
+
 ### 1. 宏驱动的代码生成
->>>>>>> e3cc337 (created a demo page using router)
+
+> > > > > > > e3cc337 (created a demo page using router)
 
 - 参考 `argh` 的实现方式，使用过程宏自动生成解析和格式化逻辑
 - 通过属性宏标注结构体字段，定义路由段的解析规则
 - 编译时生成高效的解析器代码，运行时零成本抽象
 
 <<<<<<< HEAD
+
 ### 结构化路由定义
+
 =======
+
 ### 2. 结构化路由定义
->>>>>>> e3cc337 (created a demo page using router)
+
+> > > > > > > e3cc337 (created a demo page using router)
 
 - 使用 Rust 结构体定义路由结构
 - 支持嵌套结构体组合复杂路由路径
@@ -401,6 +430,7 @@ struct UserRoute { id: u32 }
 ### 🎯 面向数据编程
 
 <<<<<<< HEAD
+
 - **数据即代码**：通过数据结构定义路由，逻辑自动生成
 - **零重复定义**：自动前缀提取，路径信息只需定义一次
 - **组合式设计**：通过结构体和枚举组合实现复杂路由
@@ -411,8 +441,8 @@ struct UserRoute { id: u32 }
 - **DRY 原则**：RouterMatch 自动从 Router 类型提取路由前缀
 - **零维护成本**：路径变更只需修改一处，逻辑自动更新
 - **类型安全**：编译时验证路由前缀的一致性
-- **手动覆盖**：支持 `#[route]` 属性手动指定前缀（可选）
-=======
+- # **手动覆盖**：支持 `#[route]` 属性手动指定前缀（可选）
+
 #### 1. 路由解析 (Parse)
 
 - 将 URL 路径字符串解析为结构化的路由对象
@@ -431,7 +461,7 @@ struct UserRoute { id: u32 }
 - 解析 URL 查询字符串
 - 支持多值参数
 - 类型转换和验证
->>>>>>> e3cc337 (created a demo page using router)
+  > > > > > > > e3cc337 (created a demo page using router)
 
 ### 🌳 递归嵌套路由
 
@@ -480,11 +510,12 @@ ruled-router = "0.1.0"
 - **Router**：具体的路由结构体，负责解析路径参数和查询参数
 - **RouterMatch**：路由匹配器枚举，负责路由分发和前缀匹配
 
-<<<<<<< HEAD
-=======
+# <<<<<<< HEAD
+
 #### 1. 嵌套路由支持
 
->>>>>>> e3cc337 (created a demo page using router)
+> > > > > > > e3cc337 (created a demo page using router)
+
 ```rust
 // Router - concrete route
 #[derive(Router)]
@@ -504,6 +535,7 @@ enum AppRouterMatch {
 ```
 
 <<<<<<< HEAD
+
 #### 属性说明
 
 - `#[router(pattern = "...")]`：定义路由模式，支持参数占位符 `:param`
@@ -520,6 +552,7 @@ enum AppRouterMatch {
 查看完整示例：[examples/modular_routes.rs](ruled-router/examples/modular_routes.rs)
 
 =======
+
 #### 2. 路径参数类型
 
 - 字符串参数: `:name`
@@ -529,7 +562,8 @@ enum AppRouterMatch {
 
 #### 3. 查询参数集成
 
->>>>>>> e3cc337 (created a demo page using router)
+> > > > > > > e3cc337 (created a demo page using router)
+
 ```rust
 // User module routes
 #[derive(Router, Debug)]
@@ -652,7 +686,7 @@ fn handle_route(path: &str) {
 #### 2. 生成的 Trait
 
 ```rust
-trait Router: Sized {
+trait RouterData: Sized {
     fn parse(path: &str) -> Result<Self, ParseError>;
     fn format(&self) -> String;
     fn pattern() -> &'static str;
@@ -685,24 +719,28 @@ trait Query: Sized {
 - 错误处理和回退机制
 
 #### 3. 路由匹配器
-<<<<<<< HEAD
-=======
+
+# <<<<<<< HEAD
 
 - 模式匹配算法
 - 优先级处理
 - 冲突检测
->>>>>>> e3cc337 (created a demo page using router)
+
+  > > > > > > > e3cc337 (created a demo page using router)
 
 - 基于前缀的快速匹配算法
 - 嵌套路由递归解析
 - 优先级处理和冲突检测
 
 <<<<<<< HEAD
+
 ### 设计模式
+
 =======
+
 ### 基本用法
 
-```rust
+````rust
 use ruled_router::{Router, Query};
 >>>>>>> e3cc337 (created a demo page using router)
 
@@ -750,22 +788,25 @@ cargo run --example modular_routes
 
 # Run advanced nested routing example
 cargo run --example nested_router_usage
-```
+````
 
 ## 测试
+
 =======
 fn main() {
-    // 解析路由
-    let route = UserProfile::parse("/user/123/profile?tab=settings&edit=true").unwrap();
-    assert_eq!(route.id, 123);
-    assert_eq!(route.options.tab, Some("settings".to_string()));
-    assert_eq!(route.options.edit, Some(true));
+// 解析路由
+let route = UserProfile::parse("/user/123/profile?tab=settings&edit=true").unwrap();
+assert_eq!(route.id, 123);
+assert_eq!(route.options.tab, Some("settings".to_string()));
+assert_eq!(route.options.edit, Some(true));
 
     // 格式化路由
     let url = route.format();
     assert_eq!(url, "/user/123/profile?tab=settings&edit=true");
+
 }
-```
+
+````
 
 ### 嵌套路由
 
@@ -791,7 +832,7 @@ cargo test query_derive_tests
 
 # Run performance tests
 cargo test --release performance_tests
-```
+````
 
 ## 贡献指南
 

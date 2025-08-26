@@ -43,7 +43,7 @@ struct ApiRoute {
   action: Option<String>,
 }
 
-impl Router for ApiRoute {
+impl RouterData for ApiRoute {
   type SubRouterMatch = ::ruled_router::NoSubRouter;
 
   fn parse(path: &str) -> Result<Self, ParseError> {

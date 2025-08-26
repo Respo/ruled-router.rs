@@ -1,6 +1,6 @@
 use ruled_router::prelude::*;
 use ruled_router::RouteMatcher;
-use ruled_router_derive::{Query, Router, RouterMatch};
+use ruled_router_derive::{Query, RouterData, RouterMatch};
 
 #[derive(Debug, Clone, PartialEq, Default, Query)]
 struct SimpleQuery {
@@ -12,7 +12,7 @@ struct SimpleQuery {
 mod user {
   use super::*;
 
-  #[derive(Debug, Clone, PartialEq, Router)]
+  #[derive(Debug, Clone, PartialEq, RouterData)]
   #[router(pattern = "/profile/:id")]
   pub struct UserProfileRoute {
     pub id: u32,
@@ -20,7 +20,7 @@ mod user {
     pub query: SimpleQuery,
   }
 
-  #[derive(Debug, Clone, PartialEq, Router)]
+  #[derive(Debug, Clone, PartialEq, RouterData)]
   #[router(pattern = "/settings")]
   pub struct UserSettingsRoute {
     #[query]
@@ -33,7 +33,7 @@ mod user {
     Settings(UserSettingsRoute),
   }
 
-  #[derive(Debug, Clone, PartialEq, Router)]
+  #[derive(Debug, Clone, PartialEq, RouterData)]
   #[router(pattern = "/users")]
   pub struct UserModuleRoute {
     #[query]
@@ -47,7 +47,7 @@ mod user {
 mod blog {
   use super::*;
 
-  #[derive(Debug, Clone, PartialEq, Router)]
+  #[derive(Debug, Clone, PartialEq, RouterData)]
   #[router(pattern = "/post/:slug")]
   pub struct BlogPostRoute {
     pub slug: String,
@@ -60,7 +60,7 @@ mod blog {
     Post(BlogPostRoute),
   }
 
-  #[derive(Debug, Clone, PartialEq, Router)]
+  #[derive(Debug, Clone, PartialEq, RouterData)]
   #[router(pattern = "/blog")]
   pub struct BlogModuleRoute {
     #[query]

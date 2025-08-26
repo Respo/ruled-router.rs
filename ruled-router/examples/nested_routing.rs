@@ -9,7 +9,7 @@ enum AppRouterMatch {
   Blog(BlogModuleRoute),
 }
 
-#[derive(Debug, Router)]
+#[derive(Debug, RouterData)]
 #[router(pattern = "/user")]
 struct UserModuleRoute {
   #[sub_router]
@@ -22,7 +22,7 @@ enum UserSubRouterMatch {
   Settings(UserSettingsRoute),
 }
 
-#[derive(Debug, Router)]
+#[derive(Debug, RouterData)]
 #[router(pattern = "/profile/:id")]
 struct UserProfileRoute {
   id: u32,
@@ -30,14 +30,14 @@ struct UserProfileRoute {
   query: UserQuery,
 }
 
-#[derive(Debug, Router)]
+#[derive(Debug, RouterData)]
 #[router(pattern = "/settings")]
 struct UserSettingsRoute {
   #[query]
   query: UserQuery,
 }
 
-#[derive(Debug, Router)]
+#[derive(Debug, RouterData)]
 #[router(pattern = "/blog")]
 struct BlogModuleRoute {
   #[sub_router]
@@ -49,7 +49,7 @@ enum BlogSubRouterMatch {
   Post(BlogPostRoute),
 }
 
-#[derive(Debug, Router)]
+#[derive(Debug, RouterData)]
 #[router(pattern = "/post/:slug")]
 struct BlogPostRoute {
   slug: String,

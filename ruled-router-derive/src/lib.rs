@@ -1,7 +1,7 @@
 //! Procedural macros for ruled-router
 //!
 //! This crate provides derive macros for automatically implementing
-//! the Router and Query traits.
+//! the RouterData and Query traits.
 
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, Data, DeriveInput, Fields, Lit, Meta};
@@ -22,22 +22,33 @@ pub fn sub_router(_args: TokenStream, input: TokenStream) -> TokenStream {
   input
 }
 
-/// Derive macro for implementing the Router trait
+/// Derive macro for implementing the RouterData trait
+///
+/// **Note**: `RouterData` is used for individual route definitions and cannot be used
+/// as a top-level router. For top-level routing, use `RouterMatch` with an enum structure
+/// that contains multiple `RouterData` implementations.
 ///
 /// # Example
 ///
 /// ```rust
-/// use ruled_router_derive::Router;
-/// use ruled_router::traits::Router;
-/// use ruled_router::RouteMatcher;
+/// use ruled_router_derive::RouterData;
+/// use ruled_router::traits::{RouterData, RouteMatcher};
 ///
-/// #[derive(Router)]
+/// // Individual route - cannot be used as top-level router
+/// #[derive(RouterData)]
 /// #[router(pattern = "/users/:id")]
 /// struct UserRoute {
 ///     id: u32,
 /// }
+///
+/// // For top-level routing, use RouterMatch with an enum:
+/// // #[derive(RouterMatch)]
+/// // enum AppRouter {
+/// //     User(UserRoute),
+/// //     // ... other routes
+/// // }
 /// ```
-#[proc_macro_derive(Router, attributes(router, query, sub_router))]
+#[proc_macro_derive(RouterData, attributes(router, query, sub_router))]
 pub fn derive_router(input: TokenStream) -> TokenStream {
   let input = parse_macro_input!(input as DeriveInput);
   expand_route_derive(input).unwrap_or_else(syn::Error::into_compile_error).into()
@@ -89,19 +100,33 @@ pub fn derive_querystring(input: TokenStream) -> TokenStream {
 
 /// Derive macro for implementing the RouterMatch trait
 ///
+/// **This is the recommended approach for top-level routing.** RouterMatch is designed
+/// to handle multiple route types in an enum structure, with automatic prefix extraction
+/// from each route's pattern.
+///
 /// This macro generates implementations for parsing and formatting
 /// nested router structures with automatic prefix extraction.
 ///
 /// # Example
 ///
 /// ```rust,ignore
-/// use ruled_router_derive::RouterMatch;
-/// use ruled_router::traits::RouterMatch;
+/// use ruled_router_derive::{RouterMatch, RouterData};
+/// use ruled_router::traits::{RouterMatch, RouterData};
 ///
+/// // Individual routes
+/// #[derive(RouterData)]
+/// #[router(pattern = "/users/:id")]
+/// struct UserRoute { id: u32 }
+///
+/// #[derive(RouterData)]  
+/// #[router(pattern = "/blog/:slug")]
+/// struct BlogRoute { slug: String }
+///
+/// // Top-level router using RouterMatch
 /// #[derive(RouterMatch)]
-/// enum AppRouterMatch {
-///     User(UserRoute),  // Automatically extracts prefix from UserRoute::pattern()
-///     Blog(BlogRoute),  // Automatically extracts prefix from BlogRoute::pattern()
+/// enum AppRouter {
+///     User(UserRoute),  // Automatically extracts "/users" prefix
+///     Blog(BlogRoute),  // Automatically extracts "/blog" prefix  
 ///     Api(ApiRoute),
 /// }
 /// ```

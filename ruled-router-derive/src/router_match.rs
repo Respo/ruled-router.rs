@@ -22,17 +22,17 @@ fn extract_route_type(variant: &Variant) -> syn::Result<&syn::Type> {
     Fields::Named(fields) if fields.named.len() == 1 => Ok(&fields.named.first().unwrap().ty),
     _ => Err(syn::Error::new_spanned(
       variant,
-      "RouterMatch variants must have exactly one field containing a Router or RouteMatcher type",
+      "RouterMatch variants must have exactly one field containing a RouterData or RouteMatcher type",
     )),
   }
 }
 
-/// 自动从路由结构体的 Router trait 实现中获取 pattern
+/// 自动从路由结构体的 RouterData trait 实现中获取 pattern
 /// 不再支持手动指定 #[route] 或 #[route_prefix] 属性，完全依赖自动提取
 fn extract_route_prefix(variant: &Variant) -> syn::Result<Option<TokenStream>> {
-  // 直接从路由结构体的 Router trait 获取 pattern
+  // 直接从路由结构体的 RouterData trait 获取 pattern
   let route_type = extract_route_type(variant)?;
-  Ok(Some(quote! { <#route_type as ::ruled_router::traits::Router>::pattern() }))
+  Ok(Some(quote! { <#route_type as ::ruled_router::traits::RouterData>::pattern() }))
 }
 
 /// 生成 try_parse 方法的实现
@@ -63,7 +63,7 @@ fn generate_try_parse_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
               };
 
               // 尝试使用 parse_with_sub 进行递归解析
-              if let Ok((route, sub_router)) = <#route_type as ::ruled_router::traits::Router>::parse_with_sub(path) {
+              if let Ok((route, sub_router)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(path) {
                 // 如果有子路由，尝试创建包含子路由的路由实例
                 if let Some(_sub) = sub_router {
                   // 对于有子路由的情况，直接返回解析结果
@@ -74,7 +74,7 @@ fn generate_try_parse_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
                 }
               }
               // 如果递归解析失败，回退到普通解析
-              if let Ok(route) = <#route_type as ::ruled_router::traits::Router>::parse(&full_path) {
+              if let Ok(route) = <#route_type as ::ruled_router::traits::RouterData>::parse(&full_path) {
                 return Ok(Self::#variant_name(route));
               }
             }
@@ -85,7 +85,7 @@ fn generate_try_parse_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
       // 这个分支现在不会被执行，因为我们总是返回 Some
       quote! {
         // 尝试使用 parse_with_sub 进行递归解析
-          if let Ok((route, sub_router)) = <#route_type as ::ruled_router::traits::Router>::parse_with_sub(path) {
+          if let Ok((route, sub_router)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(path) {
             // 如果有子路由，尝试创建包含子路由的路由实例
             if let Some(_sub) = sub_router {
               // 对于有子路由的情况，直接返回解析结果
@@ -96,7 +96,7 @@ fn generate_try_parse_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
             }
           }
         // 如果递归解析失败，回退到普通解析
-        if let Ok(route) = <#route_type as ::ruled_router::traits::Router>::parse(path) {
+        if let Ok(route) = <#route_type as ::ruled_router::traits::RouterData>::parse(path) {
           return Ok(Self::#variant_name(route));
         }
       }
@@ -146,7 +146,7 @@ fn generate_patterns_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
     let route_type = extract_route_type(variant)?;
 
     let pattern_call = quote! {
-      <#route_type as ::ruled_router::traits::Router>::pattern()
+      <#route_type as ::ruled_router::traits::RouterData>::pattern()
     };
     pattern_calls.push(pattern_call);
   }
@@ -192,13 +192,13 @@ fn generate_try_parse_with_remaining_impl(input: &DeriveInput, variants: &[&Vari
             // 检查剩余路径是否匹配变体的 route
             if remaining_after_enum_prefix.starts_with(#prefix) {
               // 计算子路由 pattern 应该消耗的路径长度
-              let parser = ::ruled_router::parser::PathParser::new(<#route_type as ::ruled_router::traits::Router>::pattern())?;
+              let parser = ::ruled_router::parser::PathParser::new(<#route_type as ::ruled_router::traits::RouterData>::pattern())?;
               if let Ok(consumed) = parser.consumed_length(remaining_after_enum_prefix) {
                 let route_path = &remaining_after_enum_prefix[..consumed];
                 let final_remaining_path = &remaining_after_enum_prefix[consumed..];
 
                 // 尝试解析匹配的路径部分
-                if let Ok((route, _)) = <#route_type as ::ruled_router::traits::Router>::parse_with_sub(route_path) {
+                if let Ok((route, _)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(route_path) {
                   return Ok((Self::#variant_name(route), final_remaining_path));
                 }
               }
@@ -210,13 +210,13 @@ fn generate_try_parse_with_remaining_impl(input: &DeriveInput, variants: &[&Vari
         quote! {
           if path.starts_with(#prefix) {
             // 计算路由 pattern 应该消耗的路径长度
-            let parser = ::ruled_router::parser::PathParser::new(<#route_type as ::ruled_router::traits::Router>::pattern())?;
+            let parser = ::ruled_router::parser::PathParser::new(<#route_type as ::ruled_router::traits::RouterData>::pattern())?;
             if let Ok(consumed) = parser.consumed_length(path) {
               let route_path = &path[..consumed];
               let remaining_path = &path[consumed..];
 
               // 尝试解析匹配的路径部分
-              if let Ok((route, _)) = <#route_type as ::ruled_router::traits::Router>::parse_with_sub(route_path) {
+              if let Ok((route, _)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(route_path) {
                 return Ok((Self::#variant_name(route), remaining_path));
               }
             }

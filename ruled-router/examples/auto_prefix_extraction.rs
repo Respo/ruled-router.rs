@@ -10,7 +10,7 @@ enum AppRouterMatch {
   Api(ApiModuleRoute),     // Auto-extracted prefix: "/api"
 }
 
-#[derive(Debug, Router)]
+#[derive(Debug, RouterData)]
 #[router(pattern = "/users")]
 struct UsersModuleRoute {
   #[sub_router]
@@ -22,13 +22,13 @@ enum UserSubRouterMatch {
   Detail(UserDetailRoute),
 }
 
-#[derive(Debug, Router)]
+#[derive(Debug, RouterData)]
 #[router(pattern = "/:id")]
 struct UserDetailRoute {
   id: u32,
 }
 
-#[derive(Debug, Router)]
+#[derive(Debug, RouterData)]
 #[router(pattern = "/blog")]
 struct BlogModuleRoute {
   #[sub_router]
@@ -40,13 +40,13 @@ enum BlogSubRouterMatch {
   Post(BlogPostRoute),
 }
 
-#[derive(Debug, Router)]
+#[derive(Debug, RouterData)]
 #[router(pattern = "/:slug")]
 struct BlogPostRoute {
   slug: String,
 }
 
-#[derive(Debug, Router)]
+#[derive(Debug, RouterData)]
 #[router(pattern = "/api")]
 struct ApiModuleRoute {
   #[sub_router]
@@ -58,7 +58,7 @@ enum ApiSubRouterMatch {
   V1(ApiV1Route),
 }
 
-#[derive(Debug, Router)]
+#[derive(Debug, RouterData)]
 #[router(pattern = "/v1")]
 struct ApiV1Route {
   // Empty route with no parameters

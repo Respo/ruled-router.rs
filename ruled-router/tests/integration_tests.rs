@@ -6,7 +6,7 @@ use ruled_router::{
   error::ParseError,
   formatter::{PathFormatter, QueryFormatter, UrlFormatter},
   parser::{PathParser, QueryParser},
-  traits::{Query, Router, ToParam},
+  traits::{Query, RouterData, ToParam},
 };
 use std::collections::HashMap;
 
@@ -16,7 +16,7 @@ struct UserRoute {
   id: u32,
 }
 
-impl Router for UserRoute {
+impl RouterData for UserRoute {
   type SubRouterMatch = ::ruled_router::NoSubRouter;
 
   fn parse(path: &str) -> Result<Self, ParseError> {

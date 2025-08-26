@@ -221,7 +221,7 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
   let format_query_logic = generate_format_query_logic(&query_fields);
 
   let expanded = quote! {
-      impl ::ruled_router::traits::Router for #struct_name {
+      impl ::ruled_router::traits::RouterData for #struct_name {
           type SubRouterMatch = #sub_router_type;
 
           fn parse(path: &str) -> Result<Self, ::ruled_router::error::ParseError> {

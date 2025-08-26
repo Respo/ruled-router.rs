@@ -6,7 +6,7 @@ use ruled_router::prelude::*;
 use std::time::Instant;
 
 /// 简单的产品路由用于性能测试
-#[derive(Debug, Clone, PartialEq, Router)]
+#[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/products/:category/:id")]
 struct ProductRoute {
   category: String,
