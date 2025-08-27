@@ -297,42 +297,6 @@ fn main() {
                                                 println!("格式: {:?}", settings.query.format);
                                                 println!("页码: {}", settings.query.page);
                                             }
-             _ => {}
-         }
-     }
-
-     // 格式化三层嵌套路由
-     let route = AppRouterMatch::User(
-         ModuleRoute {
-             module: "user".to_string(),
-             sub_router: RouteState::SubRoute(
-                 SubRouterMatch::Category(
-                     CategoryRoute {
-                         category_id: 123,
-                         query: SimpleQuery {
-                             format: Some("json".to_string()),
-                             page: 2,
-                         },
-                         sub_router: RouteState::SubRoute(
-                             DetailRouterMatch::Settings(
-                                 UserSettingsRoute {
-                                     setting_id: 456,
-                                     query: SimpleQuery {
-                                         format: Some("json".to_string()),
-                                         page: 2,
-                                     },
-                                 }
-                             )
-                         ),
-                     }
-                 )
-             ),
-         }
-     );
-
-     let formatted = route.format();
-     println!("格式化结果: {}", formatted);
-     // 输出: /user/category/123/settings/456?format=json&page=2
                                             _ => {}
                                         }
                                     }
