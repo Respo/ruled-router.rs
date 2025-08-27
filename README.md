@@ -200,62 +200,186 @@ fn main() {
 
 ### 递归嵌套路由
 
-查看完整示例：[examples/nested_routing.rs](ruled-router/examples/nested_routing.rs)
+支持任意深度的嵌套路由，实现复杂的应用架构。查看完整示例：[examples/nested_routing.rs](ruled-router/examples/nested_routing.rs)
 
 ```rust
 use ruled_router::prelude::*;
+use ruled_router::error::RouteState;
 
-// Top-level routing
+// 顶层路由匹配器 - 自动前缀提取
 #[derive(RouterMatch, Debug)]
 enum AppRouterMatch {
-    User(UserModuleRoute),   // Auto-extracted: "/users"
-    Shop(ShopModuleRoute),   // Auto-extracted: "/shop"
+    User(ModuleRoute),    // 自动提取前缀: "/user"
+    Shop(ModuleRoute),    // 自动提取前缀: "/shop"
+    Admin(ModuleRoute),   // 自动提取前缀: "/admin"
 }
 
-// Module routes with sub-routing
+// 模块路由 - 通用的模块入口
 #[derive(RouterData, Debug)]
-#[router(pattern = "/users")]
-struct UserModuleRoute {
+#[router(pattern = "/:module")]  // 动态模块名
+struct ModuleRoute {
+    module: String,
+    #[sub_router]
+    sub_router: RouteState<SubRouterMatch>,
+}
+
+// 子路由匹配器 - 自动前缀提取
+#[derive(RouterMatch, Debug)]
+enum SubRouterMatch {
+    Category(CategoryRoute),     // 分类路由
+}
+
+// 分类路由 - 第二层嵌套
+#[derive(RouterData, Debug)]
+#[router(pattern = "/category/:category_id")]
+struct CategoryRoute {
+    category_id: u32,
     #[query]
     query: SimpleQuery,
     #[sub_router]
-    sub_router: Option<UserSubRouterMatch>,
+    sub_router: RouteState<DetailRouterMatch>,
 }
 
+// 详情路由匹配器 - 第三层嵌套
 #[derive(RouterMatch, Debug)]
-enum UserSubRouterMatch {
-    Profile(UserProfileRoute), // Auto-extracted: "/profile"
-    Settings(UserSettingsRoute), // Auto-extracted: "/settings"
+enum DetailRouterMatch {
+    Settings(UserSettingsRoute),  // 用户设置
+    Product(ProductDetailRoute),  // 产品详情
 }
 
+// 具体的详情路由实现
 #[derive(RouterData, Debug)]
-#[router(pattern = "/profile/:id")]
-struct UserProfileRoute {
-    id: u32,
+#[router(pattern = "/settings/:setting_id")]
+struct UserSettingsRoute {
+    setting_id: u32,
     #[query]
     query: SimpleQuery,
 }
 
+#[derive(RouterData, Debug)]
+#[router(pattern = "/product/:product_id")]
+struct ProductDetailRoute {
+    product_id: u32,
+    #[query]
+    query: SimpleQuery,
+}
+
+// 简单查询参数定义
 #[derive(Query, Debug)]
 struct SimpleQuery {
     #[query(name = "format")]
     format: Option<String>,
+    #[query(name = "page", default = "1")]
+    page: u32,
 }
 
+// 使用示例
 fn main() {
-    let path = "/users/profile/123?format=json";
-    
+    // 解析三层嵌套路由
+    let path = "/user/category/123/settings/456?format=json&page=2";
+
     if let Ok(route) = AppRouterMatch::try_parse(path) {
         match route {
-            AppRouterMatch::User(user_route) => {
-                if let Some(UserSubRouterMatch::Profile(profile_route)) = &user_route.sub_router {
-                    println!("用户ID: {}", profile_route.id);
-                    println!("格式: {:?}", profile_route.query.format);
+            AppRouterMatch::User(module_route) => {
+                println!("模块: {}", module_route.module);
+
+                match module_route.sub_router {
+                    RouteState::SubRoute(sub) => {
+                        match sub {
+                            SubRouterMatch::Category(category_route) => {
+                                println!("分类ID: {}", category_route.category_id);
+
+                                match category_route.sub_router {
+                                    RouteState::SubRoute(detail) => {
+                                        match detail {
+                                            DetailRouterMatch::Settings(settings) => {
+                                                println!("设置ID: {}", settings.setting_id);
+                                                println!("格式: {:?}", settings.query.format);
+                                                println!("页码: {}", settings.query.page);
+                                            }
+             _ => {}
+         }
+     }
+
+     // 格式化三层嵌套路由
+     let route = AppRouterMatch::User(
+         ModuleRoute {
+             module: "user".to_string(),
+             sub_router: RouteState::SubRoute(
+                 SubRouterMatch::Category(
+                     CategoryRoute {
+                         category_id: 123,
+                         query: SimpleQuery {
+                             format: Some("json".to_string()),
+                             page: 2,
+                         },
+                         sub_router: RouteState::SubRoute(
+                             DetailRouterMatch::Settings(
+                                 UserSettingsRoute {
+                                     setting_id: 456,
+                                     query: SimpleQuery {
+                                         format: Some("json".to_string()),
+                                         page: 2,
+                                     },
+                                 }
+                             )
+                         ),
+                     }
+                 )
+             ),
+         }
+     );
+
+     let formatted = route.format();
+     println!("格式化结果: {}", formatted);
+     // 输出: /user/category/123/settings/456?format=json&page=2
+                                            _ => {}
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
             _ => {}
         }
     }
+
+    // 格式化三层嵌套路由
+    let route = AppRouterMatch::User(
+        ModuleRoute {
+            module: "user".to_string(),
+            sub_router: RouteState::SubRoute(
+                SubRouterMatch::Category(
+                    CategoryRoute {
+                        category_id: 123,
+                        query: SimpleQuery {
+                            format: Some("json".to_string()),
+                            page: 2,
+                        },
+                        sub_router: RouteState::SubRoute(
+                            DetailRouterMatch::Settings(
+                                UserSettingsRoute {
+                                    setting_id: 456,
+                                    query: SimpleQuery {
+                                        format: Some("json".to_string()),
+                                        page: 2,
+                                    },
+                                }
+                            )
+                        ),
+                    }
+                )
+            ),
+        }
+    );
+
+    let formatted = route.format();
+    println!("格式化结果: {}", formatted);
+    // 输出: /user/category/123/settings/456?format=json&page=2
 }
 ```
 

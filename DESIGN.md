@@ -369,6 +369,7 @@ enum AppRouterMatch {
 
 ```rust
 use ruled_router::prelude::*;
+use ruled_router::error::RouteState;
 
 // 顶层路由匹配器 - 自动前缀提取
 #[derive(RouterMatch)]
@@ -384,14 +385,15 @@ enum AppRouterMatch {
 struct ModuleRoute {
     module: String,
     #[sub_router]
-    sub_router: Option<SubRouterMatch>,
+    sub_router: RouteState<SubRouterMatch>,
 }
 
 // 子路由匹配器 - 自动前缀提取
 #[derive(RouterMatch)]
 enum SubRouterMatch {
-    Category(CategoryRoute),  // 自动提取前缀: "/category"
-    Settings(SettingsRoute), // 自动提取前缀: "/settings"
+    User(CategoryRoute),     // 用户相关路由
+    Shop(CategoryRoute),     // 商店相关路由
+    Admin(CategoryRoute),    // 管理相关路由
 }
 
 // 分类路由
@@ -400,104 +402,117 @@ enum SubRouterMatch {
 struct CategoryRoute {
     category_id: u32,
     #[query]
-    query: CategoryQuery,
+    query: SimpleQuery,
     #[sub_router]
-    sub_router: Option<DetailRouterMatch>,
+    sub_router: RouteState<DetailRouterMatch>,
 }
 
-// 详情路由匹配器 - 自动前缀提取
+// 详情路由匹配器 - 第三层嵌套
 #[derive(RouterMatch)]
 enum DetailRouterMatch {
-    Item(ItemDetailRoute),     // 自动提取前缀: "/item"
-    Review(ReviewDetailRoute), // 自动提取前缀: "/review"
+    UserProfile(UserSettingsRoute),
+    UserContent(UserPostRoute),
+    ShopProduct(ProductDetailRoute),
+    ShopOrder(OrderDetailRoute),
+    AdminUser(AdminUserManageRoute),
+    AdminSystem(SystemConfigRoute),
 }
 
 // 具体的详情路由实现
 #[derive(Router)]
-#[router(pattern = "/item/:item_id")]
-struct ItemDetailRoute {
-    item_id: u32,
+#[router(pattern = "/settings/:setting_id")]
+struct UserSettingsRoute {
+    setting_id: u32,
     #[query]
-    query: ItemQuery,
+    query: SimpleQuery,
 }
 
 #[derive(Router)]
-#[router(pattern = "/review/:review_id")]
-struct ReviewDetailRoute {
-    review_id: u32,
+#[router(pattern = "/post/:post_id")]
+struct UserPostRoute {
+    post_id: u32,
     #[query]
-    query: ReviewQuery,
+    query: SimpleQuery,
 }
 
-// 设置路由
 #[derive(Router)]
-#[router(pattern = "/settings")]
-struct SettingsRoute {
+#[router(pattern = "/product/:product_id")]
+struct ProductDetailRoute {
+    product_id: u32,
     #[query]
-    query: SettingsQuery,
+    query: SimpleQuery,
 }
 
-// 查询参数定义
-#[derive(Query)]
-struct CategoryQuery {
-    #[query(name = "page", default = "1")]
-    page: u32,
-    #[query(name = "limit", default = "10")]
-    limit: u32,
+#[derive(Router)]
+#[router(pattern = "/order/:order_id")]
+struct OrderDetailRoute {
+    order_id: u32,
+    #[query]
+    query: SimpleQuery,
 }
 
+#[derive(Router)]
+#[router(pattern = "/user/:user_id")]
+struct AdminUserManageRoute {
+    user_id: u32,
+    #[query]
+    query: SimpleQuery,
+}
+
+#[derive(Router)]
+#[router(pattern = "/config/:config_id")]
+struct SystemConfigRoute {
+    config_id: u32,
+    #[query]
+    query: SimpleQuery,
+}
+
+// 简单查询参数定义
 #[derive(Query)]
-struct ItemQuery {
+struct SimpleQuery {
     #[query(name = "format")]
     format: Option<String>,
-    #[query(name = "include", multiple)]
-    include: Vec<String>,
-}
-
-#[derive(Query)]
-struct ReviewQuery {
-    #[query(name = "detailed", default = "false")]
-    detailed: bool,
-}
-
-#[derive(Query)]
-struct SettingsQuery {
-    #[query(name = "tab")]
-    tab: Option<String>,
+    #[query(name = "page", default = "1")]
+    page: u32,
 }
 
 // 使用示例
 fn main() {
     // 解析三层嵌套路由
-    let path = "/user/category/123/item/456?format=json&include=details";
+    let path = "/user/category/123/settings/456?format=json&page=2";
 
     if let Ok(route) = AppRouterMatch::try_parse(path) {
         match route {
             AppRouterMatch::User(module_route) => {
                 println!("模块: {}", module_route.module);
                 
-                if let Some(sub) = &module_route.sub_router {
-                    match sub {
-                        SubRouterMatch::Category(category_route) => {
-                            println!("分类ID: {}", category_route.category_id);
-                            
-                            if let Some(detail) = &category_route.sub_router {
-                                match detail {
-                                    DetailRouterMatch::Item(item_route) => {
-                                        println!("商品ID: {}", item_route.item_id);
-                                        println!("格式: {:?}", item_route.query.format);
-                                        println!("包含: {:?}", item_route.query.include);
+                match module_route.sub_router {
+                    RouteState::SubRoute(sub) => {
+                        match sub {
+                            SubRouterMatch::User(category_route) => {
+                                println!("分类ID: {}", category_route.category_id);
+                                
+                                match category_route.sub_router {
+                                    RouteState::SubRoute(detail) => {
+                                        match detail {
+                                            DetailRouterMatch::UserProfile(settings_route) => {
+                                                println!("设置ID: {}", settings_route.setting_id);
+                                                println!("格式: {:?}", settings_route.query.format);
+                                                println!("页码: {}", settings_route.query.page);
+                                            }
+                                            DetailRouterMatch::ShopProduct(product_route) => {
+                                                println!("产品ID: {}", product_route.product_id);
+                                            }
+                                            _ => {}
+                                        }
                                     }
-                                    DetailRouterMatch::Review(review_route) => {
-                                        println!("评论ID: {}", review_route.review_id);
-                                    }
+                                    _ => {}
                                 }
                             }
-                        }
-                        SubRouterMatch::Settings(settings_route) => {
-                            println!("设置页面");
+                            _ => {}
                         }
                     }
+                    _ => {}
                 }
             }
             _ => println!("其他路由"),
@@ -508,27 +523,34 @@ fn main() {
     let route = AppRouterMatch::User(
         ModuleRoute {
             module: "user".to_string(),
-            sub_router: Some(SubRouterMatch::Category(
-                CategoryRoute {
-                    category_id: 123,
-                    query: CategoryQuery { page: 1, limit: 10 },
-                    sub_router: Some(DetailRouterMatch::Item(
-                        ItemDetailRoute {
-                            item_id: 456,
-                            query: ItemQuery {
-                                format: Some("json".to_string()),
-                                include: vec!["details".to_string()],
-                            },
-                        }
-                    )),
-                }
-            )),
+            sub_router: RouteState::SubRoute(
+                SubRouterMatch::User(
+                    CategoryRoute {
+                        category_id: 123,
+                        query: SimpleQuery { 
+                            format: Some("json".to_string()),
+                            page: 2,
+                        },
+                        sub_router: RouteState::SubRoute(
+                            DetailRouterMatch::UserProfile(
+                                UserSettingsRoute {
+                                    setting_id: 456,
+                                    query: SimpleQuery {
+                                        format: Some("json".to_string()),
+                                        page: 2,
+                                    },
+                                }
+                            )
+                        ),
+                    }
+                )
+            ),
         }
     );
 
     let formatted = route.format();
     println!("格式化结果: {}", formatted);
-    // 输出: /user/category/123/item/456?format=json&include=details
+    // 输出: /user/category/123/settings/456?format=json&page=2
 
     // 获取路由模式
     let patterns = AppRouterMatch::patterns();

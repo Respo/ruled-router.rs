@@ -1,17 +1,19 @@
 [package]
 name = "ruled-router"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2021"
 authors = ["Your Name <your.email@example.com>"]
 license = "MIT OR Apache-2.0"
 description = "A high-performance router library with derive macro support for Rust"
-repository = "https://github.com/yourusername/ruled-router"
+repository = "https://github.com/Respo/ruled-router.rs"
+documentation = "https://docs.rs/ruled-router"
+homepage = "https://github.com/Respo/ruled-router.rs"
 keywords = ["router", "web", "http", "derive", "macro"]
 categories = ["web-programming", "network-programming"]
 readme = "../README.md"
 
 [dependencies]
-ruled-router-derive = { version = "0.0.3", path = "../ruled-router-derive", optional = true }
+ruled-router-derive = { version = "0.0.4", path = "../ruled-router-derive", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 web-sys = { version = "0.3", features = [
   "console",
@@ -36,7 +38,3 @@ serde = ["dep:serde"]
 
 [dev-dependencies]
 trybuild = { workspace = true }
-
-[[example]]
-name = "debug_format_example"
-path = "../examples/debug_format_example.rs"

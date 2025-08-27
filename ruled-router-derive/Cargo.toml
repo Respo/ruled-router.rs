@@ -1,11 +1,13 @@
 [package]
 name = "ruled-router-derive"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2021"
 authors = ["Your Name <your.email@example.com>"]
 license = "MIT OR Apache-2.0"
 description = "Procedural macros for ruled-router"
-repository = "https://github.com/yourusername/ruled-router"
+repository = "https://github.com/Respo/ruled-router.rs"
+documentation = "https://docs.rs/ruled-router-derive"
+homepage = "https://github.com/Respo/ruled-router.rs"
 keywords = ["router", "url", "web", "macro"]
 categories = ["web-programming"]
 
