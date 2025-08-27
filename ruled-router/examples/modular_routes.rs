@@ -1,3 +1,4 @@
+use ruled_router::error::RouteState;
 use ruled_router::prelude::*;
 use ruled_router::RouteMatcher;
 use ruled_router_derive::{QueryDerive, RouterData, RouterMatch};
@@ -39,7 +40,7 @@ mod user {
     #[query]
     pub query: SimpleQuery,
     #[sub_router]
-    pub sub_router: Option<UserSubRouterMatch>,
+    pub sub_router: RouteState<UserSubRouterMatch>,
   }
 }
 
@@ -66,7 +67,7 @@ mod blog {
     #[query]
     pub query: SimpleQuery,
     #[sub_router]
-    pub sub_router: Option<BlogSubRouterMatch>,
+    pub sub_router: RouteState<BlogSubRouterMatch>,
   }
 }
 
@@ -88,7 +89,7 @@ fn main() {
         match route_match {
           AppRouterMatch::User(user_route) => {
             println!("  用户模块路由");
-            if let Some(sub_route) = &user_route.sub_router {
+            if let RouteState::SubRoute(sub_route) = &user_route.sub_router {
               match sub_route {
                 user::UserSubRouterMatch::Profile(profile) => {
                   println!("    用户资料: ID={}", profile.id);
@@ -101,7 +102,7 @@ fn main() {
           }
           AppRouterMatch::Blog(blog_route) => {
             println!("  博客模块路由");
-            if let Some(sub_route) = &blog_route.sub_router {
+            if let RouteState::SubRoute(sub_route) = &blog_route.sub_router {
               match sub_route {
                 blog::BlogSubRouterMatch::Post(post) => {
                   println!("    博客文章: Slug={}", post.slug);

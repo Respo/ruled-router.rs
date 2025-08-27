@@ -1,3 +1,4 @@
+use ruled_router::error::RouteState;
 use ruled_router::prelude::*;
 use ruled_router::RouteMatcher;
 use ruled_router_derive::RouterMatch;
@@ -14,7 +15,7 @@ enum AppRouterMatch {
 #[router(pattern = "/users")]
 struct UsersModuleRoute {
   #[sub_router]
-  sub_router: Option<UserSubRouterMatch>,
+  sub_router: RouteState<UserSubRouterMatch>,
 }
 
 #[derive(Debug, RouterMatch)]
@@ -32,7 +33,7 @@ struct UserDetailRoute {
 #[router(pattern = "/blog")]
 struct BlogModuleRoute {
   #[sub_router]
-  sub_router: Option<BlogSubRouterMatch>,
+  sub_router: RouteState<BlogSubRouterMatch>,
 }
 
 #[derive(Debug, RouterMatch)]
@@ -50,7 +51,7 @@ struct BlogPostRoute {
 #[router(pattern = "/api")]
 struct ApiModuleRoute {
   #[sub_router]
-  sub_router: Option<ApiSubRouterMatch>,
+  sub_router: RouteState<ApiSubRouterMatch>,
 }
 
 #[derive(Debug, RouterMatch)]
@@ -72,17 +73,17 @@ fn main() {
     match AppRouterMatch::try_parse(path) {
       Ok(route) => match route {
         AppRouterMatch::Users(users_route) => {
-          if let Some(UserSubRouterMatch::Detail(detail)) = &users_route.sub_router {
+          if let RouteState::SubRoute(UserSubRouterMatch::Detail(detail)) = &users_route.sub_router {
             println!("匹配成功: {} -> 用户详情，ID: {}", path, detail.id);
           }
         }
         AppRouterMatch::Blog(blog_route) => {
-          if let Some(BlogSubRouterMatch::Post(post)) = &blog_route.sub_router {
+          if let RouteState::SubRoute(BlogSubRouterMatch::Post(post)) = &blog_route.sub_router {
             println!("匹配成功: {} -> 博客文章，Slug: {}", path, post.slug);
           }
         }
         AppRouterMatch::Api(api_route) => {
-          if let Some(ApiSubRouterMatch::V1(_)) = &api_route.sub_router {
+          if let RouteState::SubRoute(ApiSubRouterMatch::V1(_)) = &api_route.sub_router {
             println!("匹配成功: {path} -> API v1");
           }
         }

@@ -6,6 +6,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use ruled_router::error::RouteState;
 use ruled_router::prelude::*;
 use ruled_router::RouteMatcher;
 use ruled_router_derive::{QueryDerive, RouterMatch};
@@ -76,7 +77,7 @@ struct UserModuleRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<UserSubRouterMatch>,
+  sub_router: RouteState<UserSubRouterMatch>,
 }
 
 /// 博客模块路由 - 第一层 Router
@@ -86,7 +87,7 @@ struct BlogModuleRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<BlogSubRouterMatch>,
+  sub_router: RouteState<BlogSubRouterMatch>,
 }
 
 /// 管理模块路由 - 第一层 Router
@@ -96,7 +97,7 @@ struct AdminModuleRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<AdminSubRouterMatch>,
+  sub_router: RouteState<AdminSubRouterMatch>,
 }
 
 /// 搜索路由
@@ -142,7 +143,7 @@ struct UserProfileRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<UserProfileDetailMatch>,
+  sub_router: RouteState<UserProfileDetailMatch>,
 }
 
 /// 用户文章路由 - 第二层 Router
@@ -152,7 +153,7 @@ struct UserPostsRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<UserPostsDetailMatch>,
+  sub_router: RouteState<UserPostsDetailMatch>,
 }
 
 /// 用户设置路由 - 第二层 Router
@@ -162,7 +163,7 @@ struct UserSettingsRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<UserSettingsDetailMatch>,
+  sub_router: RouteState<UserSettingsDetailMatch>,
 }
 
 /// 博客文章路由 - 第二层 Router
@@ -172,7 +173,7 @@ struct BlogPostsRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<BlogPostsDetailMatch>,
+  sub_router: RouteState<BlogPostsDetailMatch>,
 }
 
 /// 博客分类路由 - 第二层 Router
@@ -182,7 +183,7 @@ struct BlogCategoriesRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<BlogCategoriesDetailMatch>,
+  sub_router: RouteState<BlogCategoriesDetailMatch>,
 }
 
 /// 博客归档路由 - 第二层 Router
@@ -192,7 +193,7 @@ struct BlogArchivesRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<BlogArchivesDetailMatch>,
+  sub_router: RouteState<BlogArchivesDetailMatch>,
 }
 
 /// 管理用户路由 - 第二层 Router
@@ -202,7 +203,7 @@ struct AdminUsersRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<AdminUsersDetailMatch>,
+  sub_router: RouteState<AdminUsersDetailMatch>,
 }
 
 /// 管理内容路由 - 第二层 Router
@@ -212,7 +213,7 @@ struct AdminContentRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<AdminContentDetailMatch>,
+  sub_router: RouteState<AdminContentDetailMatch>,
 }
 
 /// 管理系统路由 - 第二层 Router
@@ -222,7 +223,7 @@ struct AdminSystemRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<AdminSystemDetailMatch>,
+  sub_router: RouteState<AdminSystemDetailMatch>,
 }
 
 // ===== 第三层：详细路由匹配器 =====
@@ -662,9 +663,9 @@ impl App {
         event.prevent_default();
         let user_route = AppRoute::User(UserModuleRoute {
           query: SimpleQuery::default(),
-          sub_router: Some(UserSubRouterMatch::Profile(UserProfileRoute {
+          sub_router: RouteState::SubRoute(UserSubRouterMatch::Profile(UserProfileRoute {
             query: SimpleQuery::default(),
-            sub_router: Some(UserProfileDetailMatch::Basic(UserProfileBasicRoute {
+            sub_router: RouteState::SubRoute(UserProfileDetailMatch::Basic(UserProfileBasicRoute {
               query: SimpleQuery::default(),
             })),
           })),
@@ -706,9 +707,9 @@ impl App {
         event.prevent_default();
         let blog_route = AppRoute::Blog(BlogModuleRoute {
           query: SimpleQuery::default(),
-          sub_router: Some(BlogSubRouterMatch::Posts(BlogPostsRoute {
+          sub_router: RouteState::SubRoute(BlogSubRouterMatch::Posts(BlogPostsRoute {
             query: SimpleQuery::default(),
-            sub_router: Some(BlogPostsDetailMatch::Recent(BlogPostsRecentRoute {
+            sub_router: RouteState::SubRoute(BlogPostsDetailMatch::Recent(BlogPostsRecentRoute {
               query: SimpleQuery::default(),
             })),
           })),
@@ -784,9 +785,9 @@ impl App {
         event.prevent_default();
         let admin_route = AppRoute::Admin(AdminModuleRoute {
           query: SimpleQuery::default(),
-          sub_router: Some(AdminSubRouterMatch::Users(AdminUsersRoute {
+          sub_router: RouteState::SubRoute(AdminSubRouterMatch::Users(AdminUsersRoute {
             query: SimpleQuery::default(),
-            sub_router: Some(AdminUsersDetailMatch::List(AdminUsersListRoute {
+            sub_router: RouteState::SubRoute(AdminUsersDetailMatch::List(AdminUsersListRoute {
               query: SimpleQuery::default(),
             })),
           })),

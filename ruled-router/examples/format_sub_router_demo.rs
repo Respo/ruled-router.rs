@@ -1,3 +1,4 @@
+use ruled_router::error::RouteState;
 use ruled_router::prelude::*;
 use ruled_router_derive::{QueryDerive, RouterData, RouterMatch};
 
@@ -14,7 +15,7 @@ struct UserRoute {
   #[query]
   query: TestQuery,
   #[sub_router]
-  sub_router: Option<UserSubRouterMatch>,
+  sub_router: RouteState<UserSubRouterMatch>,
 }
 
 #[derive(Debug, RouterMatch)]
@@ -47,7 +48,7 @@ fn main() {
     query: TestQuery {
       tab: Some("profile".to_string()),
     },
-    sub_router: None,
+    sub_router: RouteState::no_sub_route(),
   };
 
   println!("  基础 format():           {}", route_no_sub.format());
@@ -65,7 +66,7 @@ fn main() {
   let route_with_profile = UserRoute {
     id: 456,
     query: TestQuery { tab: None },
-    sub_router: Some(UserSubRouterMatch::Profile(profile_route)),
+    sub_router: RouteState::sub_route(UserSubRouterMatch::Profile(profile_route)),
   };
 
   println!("  基础 format():           {}", route_with_profile.format());
@@ -83,7 +84,7 @@ fn main() {
   let route_with_settings = UserRoute {
     id: 789,
     query: TestQuery { tab: None },
-    sub_router: Some(UserSubRouterMatch::Settings(settings_route)),
+    sub_router: RouteState::sub_route(UserSubRouterMatch::Settings(settings_route)),
   };
 
   println!("  基础 format():           {}", route_with_settings.format());

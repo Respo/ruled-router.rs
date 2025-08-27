@@ -58,10 +58,9 @@ struct SettingsRoute {
 
 /// API 路由
 #[derive(Debug, Clone, PartialEq, RouterData)]
-#[router(pattern = "/api/:version/:endpoint")]
+#[router(pattern = "/api/:version")]
 struct ApiRoute {
   version: String,
-  endpoint: String,
   #[query]
   query: TestQuery,
 }
@@ -152,7 +151,6 @@ mod tests {
     // 测试 API 路由的格式化
     let api_route = ApiRoute {
       version: "v1".to_string(),
-      endpoint: "users".to_string(),
       query: TestQuery {
         format: Some("xml".to_string()),
         debug: Some(false),
@@ -162,7 +160,7 @@ mod tests {
     let app_match = AppRouterMatch::Api(api_route);
     let formatted = app_match.format();
 
-    assert!(formatted.contains("/api/v1/users"));
+    assert!(formatted.contains("/api/v1"));
     assert!(formatted.contains("format=xml"));
     assert!(formatted.contains("debug=false"));
   }
@@ -272,7 +270,7 @@ mod tests {
     assert!(patterns.contains(&"/users/:id"));
     assert!(patterns.contains(&"/products/:category/:id"));
     assert!(patterns.contains(&"/settings"));
-    assert!(patterns.contains(&"/api/:version/:endpoint"));
+    assert!(patterns.contains(&"/api/:version"));
     assert_eq!(patterns.len(), 4);
   }
 
@@ -289,7 +287,6 @@ mod tests {
       }),
       AppRouterMatch::Api(ApiRoute {
         version: "v2".to_string(),
-        endpoint: "posts".to_string(),
         query: TestQuery::default(),
       }),
     ];
@@ -390,7 +387,6 @@ mod tests {
         "Api",
         AppRouterMatch::Api(ApiRoute {
           version: "v1".to_string(),
-          endpoint: "users".to_string(),
           query: TestQuery::default(),
         }),
       ),

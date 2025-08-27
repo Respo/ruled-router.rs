@@ -8,6 +8,7 @@
 //! 2. ModuleRoute -> SubRouterMatch (第二层 RouteMatcher) -> CategoryRoute (第二层 Router)
 //! 3. CategoryRoute -> DetailRouterMatch (第三层 RouteMatcher) -> DetailRoute (第三层 Router)
 
+use ruled_router::error::RouteState;
 use ruled_router::prelude::*;
 use ruled_router::RouteMatcher;
 use ruled_router_derive::RouterMatch;
@@ -40,7 +41,7 @@ struct UserModuleRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<UserSubRouterMatch>,
+  sub_router: RouteState<UserSubRouterMatch>,
 }
 
 /// 商店模块路由 - 第二层 Router
@@ -50,7 +51,7 @@ struct ShopModuleRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<ShopSubRouterMatch>,
+  sub_router: RouteState<ShopSubRouterMatch>,
 }
 
 /// 管理模块路由 - 第二层 Router
@@ -60,7 +61,7 @@ struct AdminModuleRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<AdminSubRouterMatch>,
+  sub_router: RouteState<AdminSubRouterMatch>,
 }
 
 // ===== 第二层：子路由匹配器 =====
@@ -95,7 +96,7 @@ struct UserProfileCategoryRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<UserProfileDetailRouterMatch>,
+  sub_router: RouteState<UserProfileDetailRouterMatch>,
 }
 
 /// 用户内容分类路由 - 第三层 Router
@@ -105,7 +106,7 @@ struct UserContentCategoryRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<UserContentDetailRouterMatch>,
+  sub_router: RouteState<UserContentDetailRouterMatch>,
 }
 
 /// 商店产品分类路由 - 第三层 Router
@@ -115,7 +116,7 @@ struct ShopProductCategoryRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<ShopProductDetailRouterMatch>,
+  sub_router: RouteState<ShopProductDetailRouterMatch>,
 }
 
 /// 商店订单分类路由 - 第三层 Router
@@ -125,7 +126,7 @@ struct ShopOrderCategoryRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<ShopOrderDetailRouterMatch>,
+  sub_router: RouteState<ShopOrderDetailRouterMatch>,
 }
 
 /// 管理用户分类路由 - 第三层 Router
@@ -135,7 +136,7 @@ struct AdminUserCategoryRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<AdminUserDetailRouterMatch>,
+  sub_router: RouteState<AdminUserDetailRouterMatch>,
 }
 
 /// 管理系统分类路由 - 第三层 Router
@@ -145,7 +146,7 @@ struct AdminSystemCategoryRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<AdminSystemDetailRouterMatch>,
+  sub_router: RouteState<AdminSystemDetailRouterMatch>,
 }
 
 // ===== 第三层：详情路由匹配器 =====
@@ -282,10 +283,10 @@ fn parse_nested_route(url: &str) -> Result<String, Box<dyn std::error::Error>> {
 
   match app_match {
     AppRouterMatch::User(user_route) => {
-      if let Some(user_sub_match) = user_route.sub_router {
+      if let RouteState::SubRoute(user_sub_match) = user_route.sub_router {
         match user_sub_match {
           UserSubRouterMatch::Profile(profile_route) => {
-            if let Some(profile_detail_match) = profile_route.sub_router {
+            if let RouteState::SubRoute(profile_detail_match) = profile_route.sub_router {
               match profile_detail_match {
                 UserProfileDetailRouterMatch::BasicInfo(basic_info_route) => Ok(format!(
                   "用户基本信息: ID={}, 格式={:?}",
@@ -301,7 +302,7 @@ fn parse_nested_route(url: &str) -> Result<String, Box<dyn std::error::Error>> {
             }
           }
           UserSubRouterMatch::Content(content_route) => {
-            if let Some(content_detail_match) = content_route.sub_router {
+            if let RouteState::SubRoute(content_detail_match) = content_route.sub_router {
               match content_detail_match {
                 UserContentDetailRouterMatch::Post(post_route) => Ok(format!(
                   "用户文章: 用户ID={}, 文章ID={}, 格式={:?}",
@@ -322,10 +323,10 @@ fn parse_nested_route(url: &str) -> Result<String, Box<dyn std::error::Error>> {
       }
     }
     AppRouterMatch::Shop(shop_route) => {
-      if let Some(shop_sub_match) = shop_route.sub_router {
+      if let RouteState::SubRoute(shop_sub_match) = shop_route.sub_router {
         match shop_sub_match {
           ShopSubRouterMatch::Products(product_route) => {
-            if let Some(product_detail_match) = product_route.sub_router {
+            if let RouteState::SubRoute(product_detail_match) = product_route.sub_router {
               match product_detail_match {
                 ShopProductDetailRouterMatch::Detail(detail_route) => Ok(format!(
                   "产品详情: 分类={}, ID={}, 格式={:?}",
@@ -341,7 +342,7 @@ fn parse_nested_route(url: &str) -> Result<String, Box<dyn std::error::Error>> {
             }
           }
           ShopSubRouterMatch::Orders(order_route) => {
-            if let Some(order_detail_match) = order_route.sub_router {
+            if let RouteState::SubRoute(order_detail_match) = order_route.sub_router {
               match order_detail_match {
                 ShopOrderDetailRouterMatch::Detail(detail_route) => {
                   Ok(format!("订单详情: ID={}, 格式={:?}", detail_route.id, detail_route.query.format))
@@ -357,10 +358,10 @@ fn parse_nested_route(url: &str) -> Result<String, Box<dyn std::error::Error>> {
       }
     }
     AppRouterMatch::Admin(admin_route) => {
-      if let Some(admin_sub_match) = admin_route.sub_router {
+      if let RouteState::SubRoute(admin_sub_match) = admin_route.sub_router {
         match admin_sub_match {
           AdminSubRouterMatch::Users(user_category_route) => {
-            if let Some(user_detail_match) = user_category_route.sub_router {
+            if let RouteState::SubRoute(user_detail_match) = user_category_route.sub_router {
               match user_detail_match {
                 AdminUserDetailRouterMatch::Manage(manage_route) => Ok(format!(
                   "管理员用户管理: ID={}, 格式={:?}",
@@ -372,7 +373,7 @@ fn parse_nested_route(url: &str) -> Result<String, Box<dyn std::error::Error>> {
             }
           }
           AdminSubRouterMatch::System(system_category_route) => {
-            if let Some(system_detail_match) = system_category_route.sub_router {
+            if let RouteState::SubRoute(system_detail_match) = system_category_route.sub_router {
               match system_detail_match {
                 AdminSystemDetailRouterMatch::Config(config_route) => Ok(format!("系统配置: 格式={:?}", config_route.query.format)),
               }

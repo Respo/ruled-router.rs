@@ -63,15 +63,10 @@ fn generate_try_parse_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
               };
 
               // 尝试使用 parse_with_sub 进行递归解析
-              if let Ok((route, sub_router)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(path) {
-                // 如果有子路由，尝试创建包含子路由的路由实例
-                if let Some(_sub) = sub_router {
-                  // 对于有子路由的情况，直接返回解析结果
-                  // 子路由信息已经包含在 parse_with_sub 的结果中
-                  return Ok(Self::#variant_name(route));
-                } else {
-                  return Ok(Self::#variant_name(route));
-                }
+              if let Ok((route, sub_router_state)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(path) {
+                // 无论是否有子路由，都直接返回解析结果
+                // 子路由信息已经包含在 parse_with_sub 的结果中
+                return Ok(Self::#variant_name(route));
               }
               // 如果递归解析失败，回退到普通解析
               if let Ok(route) = <#route_type as ::ruled_router::traits::RouterData>::parse(&full_path) {
@@ -85,15 +80,10 @@ fn generate_try_parse_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
       // 这个分支现在不会被执行，因为我们总是返回 Some
       quote! {
         // 尝试使用 parse_with_sub 进行递归解析
-          if let Ok((route, sub_router)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(path) {
-            // 如果有子路由，尝试创建包含子路由的路由实例
-            if let Some(_sub) = sub_router {
-              // 对于有子路由的情况，直接返回解析结果
-              // 子路由信息已经包含在 parse_with_sub 的结果中
-              return Ok(Self::#variant_name(route));
-            } else {
-              return Ok(Self::#variant_name(route));
-            }
+          if let Ok((route, sub_router_state)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(path) {
+            // 无论是否有子路由，都直接返回解析结果
+            // 子路由信息已经包含在 parse_with_sub 的结果中
+            return Ok(Self::#variant_name(route));
           }
         // 如果递归解析失败，回退到普通解析
         if let Ok(route) = <#route_type as ::ruled_router::traits::RouterData>::parse(path) {
@@ -253,14 +243,24 @@ fn generate_to_route_info_impl(variants: &[&Variant]) -> syn::Result<TokenStream
 
     let match_arm = quote! {
       Self::#variant_name(route) => {
-        let sub_route_info = if let Ok((_, sub_match)) = #route_type::parse_with_sub(&route.format()) {
-          sub_match.map(|sub| Box::new(sub.to_route_info()))
+        let sub_route_info = if let Ok((_, sub_route_state)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(&route.format()) {
+          match sub_route_state {
+            ::ruled_router::error::RouteState::SubRoute(sub_match) => {
+              // 只有当 SubRouterMatch 不是 NoSubRouter 时才调用 to_route_info
+              if std::any::type_name::<<#route_type as ::ruled_router::traits::RouterData>::SubRouterMatch>() != std::any::type_name::<::ruled_router::traits::NoSubRouter>() {
+                Some(Box::new(sub_match.to_route_info()))
+              } else {
+                None
+              }
+            },
+            _ => None,
+          }
         } else {
           None
         };
 
         ::ruled_router::traits::RouteInfo {
-          pattern: #route_type::pattern(),
+          pattern: <#route_type as ::ruled_router::traits::RouterData>::pattern(),
           formatted: route.format(),
           sub_route_info,
         }
@@ -295,7 +295,7 @@ fn generate_debug_format_impl(input: &DeriveInput, variants: &[&Variant]) -> syn
         let mut result = format!("{}{}::{}", indent_str, stringify!(#enum_name), stringify!(#variant_name));
 
         // 添加精简的路由信息
-        result.push_str(&format!("\n{}├─ Pattern: {}", indent_str, #route_type::pattern()));
+        result.push_str(&format!("\n{}├─ Pattern: {}", indent_str, <#route_type as ::ruled_router::traits::RouterData>::pattern()));
 
         // 添加格式化的路径
         let formatted = route.format();
@@ -303,7 +303,7 @@ fn generate_debug_format_impl(input: &DeriveInput, variants: &[&Variant]) -> syn
 
         // 检查是否有查询参数，如果有则显示参数名称
         if formatted.contains('?') {
-          let query_keys = #route_type::query_keys();
+          let query_keys = <#route_type as ::ruled_router::traits::RouterData>::query_keys();
           if !query_keys.is_empty() {
             let keys_str = query_keys.join(", ");
             result.push_str(&format!("\n{}├─ Query: {}", indent_str, keys_str));
@@ -313,12 +313,20 @@ fn generate_debug_format_impl(input: &DeriveInput, variants: &[&Variant]) -> syn
         }
 
         // 尝试获取子路由信息
-        if let Ok((_, sub_match)) = #route_type::parse_with_sub(&route.format()) {
-          if let Some(sub) = sub_match {
-            result.push_str(&format!("\n{}└─ Sub:", indent_str));
-            result.push_str(&format!("\n{}", sub.debug_format(indent + 1)));
-          } else {
-            result.push_str(&format!("\n{}└─ ◉", indent_str));
+        if let Ok((_, sub_route_state)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(&route.format()) {
+          match sub_route_state {
+            ::ruled_router::error::RouteState::SubRoute(sub_match) => {
+              // 只有当 SubRouterMatch 不是 NoSubRouter 时才调用 debug_format
+              if std::any::type_name::<<#route_type as ::ruled_router::traits::RouterData>::SubRouterMatch>() != std::any::type_name::<::ruled_router::traits::NoSubRouter>() {
+                result.push_str(&format!("\n{}└─ Sub:", indent_str));
+                result.push_str(&format!("\n{}", sub_match.debug_format(indent + 1)));
+              } else {
+                result.push_str(&format!("\n{}└─ ◉", indent_str));
+              }
+            }
+            _ => {
+              result.push_str(&format!("\n{}└─ ◉", indent_str));
+            }
           }
         } else {
           result.push_str(&format!("\n{}└─ ◉", indent_str));

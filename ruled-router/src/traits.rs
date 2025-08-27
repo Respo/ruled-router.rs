@@ -2,7 +2,7 @@
 //!
 //! 定义了路由解析和格式化的核心接口
 
-use crate::error::ParseError;
+use crate::error::{ParseError, RouteState};
 use std::fmt::Debug;
 
 /// 嵌套路由解析结果
@@ -260,7 +260,7 @@ pub trait RouterData: Sized {
   /// 路由的模式字符串，例如 "/user/:id"
   fn pattern() -> &'static str;
 
-  /// 解析路径并返回路由和可能的子路由
+  /// 解析路径并返回路由和子路由状态
   ///
   /// # 参数
   ///
@@ -268,24 +268,35 @@ pub trait RouterData: Sized {
   ///
   /// # 返回值
   ///
-  /// 成功时返回路由实例和可能的子路由匹配，失败时返回 ParseError
+  /// 成功时返回路由实例和子路由状态，失败时返回 ParseError
+  /// 子路由状态可以是：
+  /// - `RouteState::NoSubRoute`: 没有子路由（预期的叶子节点）
+  /// - `RouteState::SubRoute(sub)`: 成功解析到子路由
+  /// - `RouteState::ParseFailed { ... }`: 子路由解析失败，包含调试信息
   ///
   /// # 示例
   ///
   /// ```rust,ignore
-  /// let (route, sub_match) = UserRoute::parse_with_sub("/users/123/posts/456")?;
+  /// let (route, sub_state) = UserRoute::parse_with_sub("/users/123/posts/456")?;
+  /// match sub_state {
+  ///   RouteState::NoSubRoute => println!("叶子节点"),
+  ///   RouteState::SubRoute(sub) => println!("有子路由: {:?}", sub),
+  ///   RouteState::ParseFailed { remaining_path, .. } => {
+  ///     println!("子路由解析失败，剩余路径: {}", remaining_path);
+  ///   }
+  /// }
   /// ```
-  fn parse_with_sub(path: &str) -> Result<(Self, Option<Self::SubRouterMatch>), ParseError> {
+  fn parse_with_sub(path: &str) -> Result<(Self, RouteState<Self::SubRouterMatch>), ParseError> {
     // 默认实现：只解析当前路由，不处理子路由
     let route = Self::parse(path)?;
-    Ok((route, None))
+    Ok((route, RouteState::NoSubRoute))
   }
 
   /// 格式化路由和子路由为完整路径
   ///
   /// # 参数
   ///
-  /// * `sub_route` - 可选的子路由匹配
+  /// * `sub_route_state` - 子路由状态
   ///
   /// # 返回值
   ///
@@ -294,12 +305,12 @@ pub trait RouterData: Sized {
   /// # 示例
   ///
   /// ```rust,ignore
-  /// let url = route.format_with_sub(Some(&sub_match));
+  /// let url = route.format_with_sub(&sub_state);
   /// ```
-  fn format_with_sub(&self, sub_route: Option<&Self::SubRouterMatch>) -> String {
+  fn format_with_sub(&self, sub_route_state: &RouteState<Self::SubRouterMatch>) -> String {
     let base_url = self.format();
-    match sub_route {
-      Some(sub) => {
+    match sub_route_state {
+      RouteState::SubRoute(sub) => {
         let sub_url = sub.format();
         if sub_url.is_empty() {
           base_url
@@ -307,7 +318,7 @@ pub trait RouterData: Sized {
           format!("{}{}", base_url.trim_end_matches('/'), sub_url)
         }
       }
-      None => base_url,
+      RouteState::NoSubRoute | RouteState::ParseFailed { .. } => base_url,
     }
   }
 
@@ -349,9 +360,12 @@ pub trait RouterData: Sized {
   /// println!("Sub route info: {:?}", result.sub_route_info);
   /// ```
   fn parse_recursive(path: &str) -> Result<NestedRouteResult<Self>, ParseError> {
-    let (current, sub_match) = Self::parse_with_sub(path)?;
+    let (current, sub_route_state) = Self::parse_with_sub(path)?;
 
-    let sub_route_info = sub_match.map(|sub| Box::new(sub.to_route_info()));
+    let sub_route_info = match sub_route_state {
+      RouteState::SubRoute(sub) => Some(Box::new(sub.to_route_info())),
+      RouteState::NoSubRoute | RouteState::ParseFailed { .. } => None,
+    };
 
     Ok(NestedRouteResult { current, sub_route_info })
   }
@@ -382,13 +396,16 @@ pub trait RouterData: Sized {
     let current_path = &full_path[..consumed];
 
     // 解析当前层级
-    let (current, sub_match) = Self::parse_with_sub(current_path)?;
+    let (current, sub_route_state) = Self::parse_with_sub(current_path)?;
 
     // 获取剩余路径
     let remaining_path = &full_path[consumed..];
 
     // 处理子路由信息
-    let sub_route_info = sub_match.map(|sub| Box::new(sub.to_route_info()));
+    let sub_route_info = match sub_route_state {
+      RouteState::SubRoute(sub) => Some(Box::new(sub.to_route_info())),
+      RouteState::NoSubRoute | RouteState::ParseFailed { .. } => None,
+    };
 
     let result = NestedRouteResult { current, sub_route_info };
 

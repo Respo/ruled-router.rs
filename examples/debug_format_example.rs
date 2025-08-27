@@ -3,6 +3,7 @@
 //! 这个示例展示了如何使用 RouterMatch 的 debug_format 方法
 //! 来打印复杂的多层嵌套路由结构，用于开发过程中的验证。
 
+use ruled_router::error::RouteState;
 use ruled_router::prelude::*;
 use ruled_router::RouteMatcher;
 use ruled_router_derive::{QueryDerive, RouterData, RouterMatch};
@@ -104,7 +105,7 @@ struct UserProfileCategoryRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<UserProfileDetailRouterMatch>,
+  sub_router: RouteState<UserProfileDetailRouterMatch>,
 }
 
 #[derive(Debug, Clone, PartialEq, RouterData)]
@@ -113,7 +114,7 @@ struct UserContentCategoryRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<UserContentDetailRouterMatch>,
+  sub_router: RouteState<UserContentDetailRouterMatch>,
 }
 
 #[derive(Debug, Clone, PartialEq, RouterData)]
@@ -122,7 +123,7 @@ struct AdminUserCategoryRoute {
   #[query]
   query: AdminQuery,
   #[sub_router]
-  sub_router: Option<AdminUserDetailRouterMatch>,
+  sub_router: RouteState<AdminUserDetailRouterMatch>,
 }
 
 #[derive(Debug, Clone, PartialEq, RouterData)]
@@ -131,7 +132,7 @@ struct AdminSystemCategoryRoute {
   #[query]
   query: AdminQuery,
   #[sub_router]
-  sub_router: Option<AdminSystemDetailRouterMatch>,
+  sub_router: RouteState<AdminSystemDetailRouterMatch>,
 }
 
 // ===== 第二层：子路由匹配器 =====
@@ -156,7 +157,7 @@ struct UserModuleRoute {
   #[query]
   query: SimpleQuery,
   #[sub_router]
-  sub_router: Option<UserSubRouterMatch>,
+  sub_router: RouteState<UserSubRouterMatch>,
 }
 
 #[derive(Debug, Clone, PartialEq, RouterData)]
@@ -165,7 +166,7 @@ struct AdminModuleRoute {
   #[query]
   query: AdminQuery,
   #[sub_router]
-  sub_router: Option<AdminSubRouterMatch>,
+  sub_router: RouteState<AdminSubRouterMatch>,
 }
 
 // ===== 顶层路由匹配器 =====
@@ -185,12 +186,12 @@ fn main() {
       page: Some(1),
       limit: Some(10),
     },
-    sub_router: Some(UserSubRouterMatch::Profile(UserProfileCategoryRoute {
+    sub_router: RouteState::sub_route(UserSubRouterMatch::Profile(UserProfileCategoryRoute {
       query: SimpleQuery {
         page: None,
         limit: Some(20),
       },
-      sub_router: Some(UserProfileDetailRouterMatch::BasicInfo(UserBasicInfoRoute {
+      sub_router: RouteState::sub_route(UserProfileDetailRouterMatch::BasicInfo(UserBasicInfoRoute {
         id: 123,
         query: SimpleQuery::default(),
       })),
@@ -203,9 +204,9 @@ fn main() {
       page: Some(2),
       limit: None,
     },
-    sub_router: Some(UserSubRouterMatch::Profile(UserProfileCategoryRoute {
+    sub_router: RouteState::sub_route(UserSubRouterMatch::Profile(UserProfileCategoryRoute {
       query: SimpleQuery::default(),
-      sub_router: Some(UserProfileDetailRouterMatch::Settings(UserSettingsRoute {
+      sub_router: RouteState::sub_route(UserProfileDetailRouterMatch::Settings(UserSettingsRoute {
         query: SimpleQuery {
           page: Some(1),
           limit: Some(5),
@@ -217,12 +218,12 @@ fn main() {
   // 用户模块 -> 内容分类 -> 帖子详情（3层嵌套）
   let user_content_post = AppRouterMatch::User(UserModuleRoute {
     query: SimpleQuery::default(),
-    sub_router: Some(UserSubRouterMatch::Content(UserContentCategoryRoute {
+    sub_router: RouteState::sub_route(UserSubRouterMatch::Content(UserContentCategoryRoute {
       query: SimpleQuery {
         page: Some(3),
         limit: Some(15),
       },
-      sub_router: Some(UserContentDetailRouterMatch::Post(UserPostRoute {
+      sub_router: RouteState::sub_route(UserContentDetailRouterMatch::Post(UserPostRoute {
         id: 456,
         query: SimpleQuery::default(),
       })),
@@ -232,9 +233,9 @@ fn main() {
   // 用户模块 -> 内容分类 -> 评论详情（3层嵌套）
   let user_content_comment = AppRouterMatch::User(UserModuleRoute {
     query: SimpleQuery::default(),
-    sub_router: Some(UserSubRouterMatch::Content(UserContentCategoryRoute {
+    sub_router: RouteState::sub_route(UserSubRouterMatch::Content(UserContentCategoryRoute {
       query: SimpleQuery::default(),
-      sub_router: Some(UserContentDetailRouterMatch::Comment(UserCommentRoute {
+      sub_router: RouteState::sub_route(UserContentDetailRouterMatch::Comment(UserCommentRoute {
         id: 789,
         query: SimpleQuery {
           page: Some(1),
@@ -250,12 +251,12 @@ fn main() {
       token: Some("admin123".to_string()),
       debug: Some(true),
     },
-    sub_router: Some(AdminSubRouterMatch::Users(AdminUserCategoryRoute {
+    sub_router: RouteState::sub_route(AdminSubRouterMatch::Users(AdminUserCategoryRoute {
       query: AdminQuery {
         token: Some("user_token".to_string()),
         debug: Some(false),
       },
-      sub_router: Some(AdminUserDetailRouterMatch::Manage(AdminUserManageRoute {
+      sub_router: RouteState::sub_route(AdminUserDetailRouterMatch::Manage(AdminUserManageRoute {
         query: AdminQuery {
           token: None,
           debug: Some(true),
@@ -270,9 +271,9 @@ fn main() {
       token: Some("system_admin".to_string()),
       debug: Some(false),
     },
-    sub_router: Some(AdminSubRouterMatch::System(AdminSystemCategoryRoute {
+    sub_router: RouteState::sub_route(AdminSubRouterMatch::System(AdminSystemCategoryRoute {
       query: AdminQuery::default(),
-      sub_router: Some(AdminSystemDetailRouterMatch::Config(SystemConfigRoute {
+      sub_router: RouteState::sub_route(AdminSystemDetailRouterMatch::Config(SystemConfigRoute {
         query: AdminQuery {
           token: Some("config_token".to_string()),
           debug: Some(true),
@@ -287,9 +288,9 @@ fn main() {
       page: Some(1),
       limit: Some(25),
     },
-    sub_router: Some(UserSubRouterMatch::Profile(UserProfileCategoryRoute {
+    sub_router: RouteState::sub_route(UserSubRouterMatch::Profile(UserProfileCategoryRoute {
       query: SimpleQuery::default(),
-      sub_router: None, // 没有第三层
+      sub_router: RouteState::no_sub_route(), // 没有第三层
     })),
   });
 
@@ -299,7 +300,7 @@ fn main() {
       token: Some("simple_admin".to_string()),
       debug: None,
     },
-    sub_router: None, // 没有子路由
+    sub_router: RouteState::no_sub_route(), // 没有子路由
   });
 
   // 创建应用路由实例集合
@@ -340,9 +341,9 @@ fn main() {
 
       // 根据子路由类型确定路由名称
       let route_name = match &user_route.sub_router {
-        Some(UserSubRouterMatch::Profile(_)) => "Profile",
-        Some(UserSubRouterMatch::Content(_)) => "Content",
-        None => "Base",
+        RouteState::SubRoute(UserSubRouterMatch::Profile(_)) => "Profile",
+        RouteState::SubRoute(UserSubRouterMatch::Content(_)) => "Content",
+        _ => "Base",
       };
 
       println!("{prefix} {route_name}");
@@ -359,14 +360,17 @@ fn main() {
       };
       println!("{continuation}├─ Query: {query_info}");
 
-      if let Some(sub_router) = &user_route.sub_router {
-        println!("{continuation}└─ Sub:");
-        let sub_debug = sub_router.debug_format(0);
-        for line in sub_debug.lines() {
-          println!("{continuation}   {line}");
+      match &user_route.sub_router {
+        RouteState::SubRoute(sub_router) => {
+          println!("{continuation}└─ Sub:");
+          let sub_debug = sub_router.debug_format(0);
+          for line in sub_debug.lines() {
+            println!("{continuation}   {line}");
+          }
         }
-      } else {
-        println!("{continuation}└─ ◉");
+        _ => {
+          println!("{continuation}└─ ◉");
+        }
       }
     }
   }
@@ -383,9 +387,9 @@ fn main() {
 
       // 根据子路由类型确定路由名称
       let route_name = match &admin_route.sub_router {
-        Some(AdminSubRouterMatch::Users(_)) => "Users",
-        Some(AdminSubRouterMatch::System(_)) => "System",
-        None => "Base",
+        RouteState::SubRoute(AdminSubRouterMatch::Users(_)) => "Users",
+        RouteState::SubRoute(AdminSubRouterMatch::System(_)) => "System",
+        _ => "Base",
       };
 
       println!("{prefix} {route_name}");
@@ -402,14 +406,17 @@ fn main() {
       };
       println!("{continuation}├─ Query: {query_info}");
 
-      if let Some(sub_router) = &admin_route.sub_router {
-        println!("{continuation}└─ Sub:");
-        let sub_debug = sub_router.debug_format(0);
-        for line in sub_debug.lines() {
-          println!("{continuation}   {line}");
+      match &admin_route.sub_router {
+        RouteState::SubRoute(sub_router) => {
+          println!("{continuation}└─ Sub:");
+          let sub_debug = sub_router.debug_format(0);
+          for line in sub_debug.lines() {
+            println!("{continuation}   {line}");
+          }
         }
-      } else {
-        println!("{continuation}└─ ◉");
+        _ => {
+          println!("{continuation}└─ ◉");
+        }
       }
     }
   }

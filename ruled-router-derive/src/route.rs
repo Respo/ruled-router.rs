@@ -147,24 +147,77 @@ fn generate_format_path_fields(fields: &[(syn::Ident, Type)]) -> Vec<TokenStream
 /// 生成格式化子路由逻辑的代码
 fn generate_format_sub_router_logic(fields: &[RouteField]) -> TokenStream {
   // 查找有 #[sub_router] 属性的字段
-  for (field_name, _, _, is_sub_router) in fields {
+  for (field_name, field_type, _, is_sub_router) in fields {
     if *is_sub_router {
+      // 检查字段类型是 Option 还是 RouteState
+      if let Type::Path(type_path) = field_type {
+        if let Some(segment) = type_path.path.segments.last() {
+          if segment.ident == "Option" {
+            // 对于 Option 类型，生成不同的匹配逻辑
+            return quote! {
+              if let Some(ref sub_router) = &self.#field_name {
+                let sub_url = sub_router.format();
+                if !sub_url.is_empty() {
+                  // 移除子路由URL中的查询部分，因为我们将在最后添加基础路由的查询
+                  let (sub_path_part, sub_query_part) = ::ruled_router::utils::split_path_query(&sub_url);
+                  url.push_str(sub_path_part);
+                  // 如果子路由有查询参数，则使用子路由的查询参数而不是基础路由的
+                  if let Some(sub_query) = sub_query_part {
+                    if !sub_query.is_empty() {
+                      url.push('?');
+                      url.push_str(sub_query);
+                      return url; // 提前返回，避免添加基础路由的查询参数
+                    }
+                  }
+                }
+              }
+            };
+          } else if segment.ident == "RouteState" {
+            // 对于 RouteState 类型，使用原来的匹配逻辑
+            return quote! {
+              match &self.#field_name {
+                RouteState::SubRoute(ref sub_router) => {
+                  let sub_url = sub_router.format();
+                  if !sub_url.is_empty() {
+                    // 移除子路由URL中的查询部分，因为我们将在最后添加基础路由的查询
+                    let (sub_path_part, sub_query_part) = ::ruled_router::utils::split_path_query(&sub_url);
+                    url.push_str(sub_path_part);
+                    // 如果子路由有查询参数，则使用子路由的查询参数而不是基础路由的
+                    if let Some(sub_query) = sub_query_part {
+                      if !sub_query.is_empty() {
+                        url.push('?');
+                        url.push_str(sub_query);
+                        return url; // 提前返回，避免添加基础路由的查询参数
+                      }
+                    }
+                  }
+                }
+                _ => {} // NoSubRoute 或 ParseFailed 情况下不添加任何内容
+              }
+            };
+          }
+        }
+      }
+      // 默认情况，假设是 RouteState
       return quote! {
-        if let Some(ref sub_router) = self.#field_name {
-          let sub_url = sub_router.format();
-          if !sub_url.is_empty() {
-            // 移除子路由URL中的查询部分，因为我们将在最后添加基础路由的查询
-            let (sub_path_part, sub_query_part) = ::ruled_router::utils::split_path_query(&sub_url);
-            url.push_str(sub_path_part);
-            // 如果子路由有查询参数，则使用子路由的查询参数而不是基础路由的
-            if let Some(sub_query) = sub_query_part {
-              if !sub_query.is_empty() {
-                url.push('?');
-                url.push_str(sub_query);
-                return url; // 提前返回，避免添加基础路由的查询参数
+        match &self.#field_name {
+          RouteState::SubRoute(ref sub_router) => {
+            let sub_url = sub_router.format();
+            if !sub_url.is_empty() {
+              // 移除子路由URL中的查询部分，因为我们将在最后添加基础路由的查询
+              let (sub_path_part, sub_query_part) = ::ruled_router::utils::split_path_query(&sub_url);
+              url.push_str(sub_path_part);
+              // 如果子路由有查询参数，则使用子路由的查询参数而不是基础路由的
+              if let Some(sub_query) = sub_query_part {
+                if !sub_query.is_empty() {
+                  url.push('?');
+                  url.push_str(sub_query);
+                  return url; // 提前返回，避免添加基础路由的查询参数
+                }
               }
             }
           }
+          _ => {} // NoSubRoute 或 ParseFailed 情况下不添加任何内容
         }
       };
     }
@@ -175,7 +228,7 @@ fn generate_format_sub_router_logic(fields: &[RouteField]) -> TokenStream {
 
 /// 生成查询参数字段名称的实现
 fn generate_query_keys_impl(fields: &[RouteField]) -> Vec<TokenStream> {
-  for (field_name, field_type, is_query, _) in fields {
+  for (_field_name, field_type, is_query, _) in fields {
     if *is_query {
       return vec![quote! {
         <#field_type as ::ruled_router::traits::Query>::query_keys()
@@ -217,8 +270,15 @@ fn find_sub_router_type(fields: &[RouteField]) -> TokenStream {
                 return quote! { #inner_type };
               }
             }
+          } else if segment.ident == "RouteState" {
+            // 处理 RouteState<T> 类型，提取内部的 T
+            if let syn::PathArguments::AngleBracketed(args) = &segment.arguments {
+              if let Some(syn::GenericArgument::Type(inner_type)) = args.args.first() {
+                return quote! { #inner_type };
+              }
+            }
           } else {
-            // 不是 Option 类型，直接返回类型
+            // 不是 Option 或 RouteState 类型，直接返回类型
             return quote! { #field_type };
           }
         }
@@ -234,10 +294,27 @@ fn find_sub_router_type(fields: &[RouteField]) -> TokenStream {
 
 /// 生成子路由字段的解析代码
 fn generate_parse_sub_router_field(fields: &[RouteField]) -> TokenStream {
-  for (field_name, _, _, is_sub_router) in fields {
+  for (field_name, field_type, _, is_sub_router) in fields {
     if *is_sub_router {
+      // 检查字段类型是 Option 还是 RouteState
+      if let Type::Path(type_path) = field_type {
+        if let Some(segment) = type_path.path.segments.last() {
+          if segment.ident == "Option" {
+            // 对于 Option 类型，使用 None
+            return quote! {
+              #field_name: None,
+            };
+          } else if segment.ident == "RouteState" {
+            // 对于 RouteState 类型，使用 no_sub_route()
+            return quote! {
+              #field_name: RouteState::no_sub_route(),
+            };
+          }
+        }
+      }
+      // 默认情况，假设是 RouteState
       return quote! {
-        #field_name: None,
+        #field_name: RouteState::no_sub_route(),
       };
     }
   }
@@ -271,7 +348,10 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
   let query_keys_impl = generate_query_keys_impl(&fields);
 
   let expanded = quote! {
-      impl ::ruled_router::traits::RouterData for #struct_name {
+      const _: () = {
+          use ::ruled_router::error::RouteState;
+
+          impl ::ruled_router::traits::RouterData for #struct_name {
           type SubRouterMatch = #sub_router_type;
 
           fn parse(path: &str) -> Result<Self, ::ruled_router::error::ParseError> {
@@ -293,7 +373,7 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
               })
           }
 
-          fn parse_with_sub(path: &str) -> Result<(Self, Option<Self::SubRouterMatch>), ::ruled_router::error::ParseError> {
+          fn parse_with_sub(path: &str) -> Result<(Self, RouteState<Self::SubRouterMatch>), ::ruled_router::error::ParseError> {
               let (path_part, query_part) = ::ruled_router::utils::split_path_query(path);
               let parser = ::ruled_router::parser::PathParser::new(#pattern)?;
 
@@ -308,7 +388,7 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
                   Ok(params) => params,
                   Err(_) => {
                       // 如果无法匹配，尝试用完整路径解析（向后兼容）
-                      return Self::parse(path).map(|router| (router, None));
+                      return Self::parse(path).map(|router| (router, RouteState::no_sub_route()));
                   }
               };
 
@@ -327,13 +407,22 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
 
               // 尝试解析子路由
               let remaining_path = &path[consumed..];
-              let sub_router = if !remaining_path.is_empty() {
-                  Self::SubRouterMatch::try_parse(remaining_path).ok()
+              let sub_router_state = if !remaining_path.is_empty() {
+                  match Self::SubRouterMatch::try_parse(remaining_path) {
+                      Ok(sub_match) => RouteState::sub_route(sub_match),
+                      Err(parse_error) => {
+                          RouteState::parse_failed(
+                              remaining_path.to_string(),
+                              vec![], // TODO: 可以在后续版本中添加更详细的路由信息
+                              None // TODO: 可以在后续版本中添加最接近匹配信息
+                          )
+                      }
+                  }
               } else {
-                  None
+                  RouteState::no_sub_route()
               };
 
-              Ok((router, sub_router))
+              Ok((router, sub_router_state))
           }
 
           fn format(&self) -> String {
@@ -364,21 +453,19 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
            }
       }
 
-      impl ::ruled_router::traits::ToRouteInfo for #struct_name {
-          fn to_route_info(&self) -> ::ruled_router::traits::RouteInfo {
-              let sub_route_info = if let Ok((_, sub_match)) = Self::parse_with_sub(&self.format()) {
-                  sub_match.map(|sub| Box::new(sub.to_route_info()))
-              } else {
-                  None
-              };
+          impl ::ruled_router::traits::ToRouteInfo for #struct_name {
+              fn to_route_info(&self) -> ::ruled_router::traits::RouteInfo {
+                  // 对于没有子路由的情况，直接返回 None
+                  let sub_route_info = None;
 
-              ::ruled_router::traits::RouteInfo {
-                  pattern: Self::pattern(),
-                  formatted: self.format(),
-                  sub_route_info,
+                  ::ruled_router::traits::RouteInfo {
+                      pattern: Self::pattern(),
+                      formatted: self.format(),
+                      sub_route_info,
+                  }
               }
           }
-      }
+      };
   };
 
   Ok(expanded)

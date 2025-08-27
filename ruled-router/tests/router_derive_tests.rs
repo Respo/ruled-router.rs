@@ -2,6 +2,7 @@
 //!
 //! 测试 #[derive(Router)] 宏的各种功能，包括自动前缀提取
 
+use ruled_router::error::RouteState;
 use ruled_router::prelude::*;
 
 /// 基础路由测试
@@ -54,7 +55,7 @@ struct ModuleRoute {
   #[query]
   options: ModuleOptions,
   #[sub_router]
-  sub_router: Option<SubRouteType>,
+  sub_router: RouteState<SubRouteType>,
 }
 
 /// 模块选项
@@ -169,7 +170,7 @@ mod tests {
     assert_eq!(route.name, "auth");
     assert_eq!(route.options.version, Some("v1".to_string()));
     assert_eq!(route.options.debug, Some(true));
-    assert_eq!(route.sub_router, None); // NoSubRouter 应该是 None
+    assert!(route.sub_router.is_no_sub_route()); // NoSubRouter 应该是 NoSubRoute
 
     // 测试格式化
     let formatted = route.format();

@@ -8,7 +8,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-ruled-router = { path = "../ruled-router", features = ["dom", "derive"] }
+ruled-router = { path = "../ruled-router", features = ["dom", "derive", "serde"] }
 ruled-router-derive = { path = "../ruled-router-derive" }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"

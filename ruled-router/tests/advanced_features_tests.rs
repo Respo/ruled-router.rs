@@ -2,6 +2,7 @@
 //!
 //! 测试自定义类型转换、复杂路由模式等高级功能
 
+use ruled_router::error::RouteState;
 use ruled_router::prelude::*;
 use std::collections::HashMap;
 
@@ -380,7 +381,7 @@ mod router_data_format_tests {
     #[query]
     query: TestQuery,
     #[sub_router]
-    sub_router: Option<UserSubRouterMatch>,
+    sub_router: RouteState<UserSubRouterMatch>,
   }
 
   #[derive(Debug, RouterMatch)]
@@ -411,7 +412,7 @@ mod router_data_format_tests {
       query: TestQuery {
         tab: Some("profile".to_string()),
       },
-      sub_router: None,
+      sub_router: RouteState::no_sub_route(),
     };
 
     let formatted = route.format_sub_router();
@@ -430,7 +431,7 @@ mod router_data_format_tests {
     let route = UserRoute {
       id: 123,
       query: TestQuery { tab: None },
-      sub_router: Some(UserSubRouterMatch::Profile(profile_route)),
+      sub_router: RouteState::sub_route(UserSubRouterMatch::Profile(profile_route)),
     };
 
     let formatted = route.format_sub_router();
@@ -449,7 +450,7 @@ mod router_data_format_tests {
     let route = UserRoute {
       id: 456,
       query: TestQuery { tab: None },
-      sub_router: Some(UserSubRouterMatch::Settings(settings_route)),
+      sub_router: RouteState::sub_route(UserSubRouterMatch::Settings(settings_route)),
     };
 
     let formatted = route.format_sub_router();
@@ -463,7 +464,7 @@ mod router_data_format_tests {
 
     let (route, sub_match) = UserRoute::parse_with_sub(original_path).unwrap();
     assert_eq!(route.id, 789);
-    assert!(sub_match.is_some());
+    assert!(!sub_match.is_no_sub_route());
 
     // 手动构造带子路由的路由结构
     let route_with_sub = UserRoute {
@@ -490,17 +491,17 @@ mod router_data_format_tests {
       id: result.current.id,
       query: result.current.query,
       sub_router: match result.sub_route_info.as_ref().map(|info| info.pattern) {
-        Some("/settings") => Some(UserSubRouterMatch::Settings(SettingsRoute {
+        Some("/settings") => RouteState::sub_route(UserSubRouterMatch::Settings(SettingsRoute {
           query: TestQuery {
             tab: Some("security".to_string()),
           },
         })),
-        Some("/profile") => Some(UserSubRouterMatch::Profile(ProfileRoute {
+        Some("/profile") => RouteState::sub_route(UserSubRouterMatch::Profile(ProfileRoute {
           query: TestQuery {
             tab: Some("security".to_string()),
           },
         })),
-        _ => None,
+        _ => RouteState::no_sub_route(),
       },
     };
 

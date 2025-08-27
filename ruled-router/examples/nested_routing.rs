@@ -1,3 +1,4 @@
+use ruled_router::error::RouteState;
 use ruled_router::prelude::*;
 use ruled_router::RouteMatcher;
 use ruled_router_derive::{QueryDerive, RouterData, RouterMatch};
@@ -13,7 +14,7 @@ enum AppRouterMatch {
 #[router(pattern = "/user")]
 struct UserModuleRoute {
   #[sub_router]
-  sub_router: Option<UserSubRouterMatch>,
+  sub_router: RouteState<UserSubRouterMatch>,
 }
 
 #[derive(Debug, RouterMatch)]
@@ -41,7 +42,7 @@ struct UserSettingsRoute {
 #[router(pattern = "/blog")]
 struct BlogModuleRoute {
   #[sub_router]
-  sub_router: Option<BlogSubRouterMatch>,
+  sub_router: RouteState<BlogSubRouterMatch>,
 }
 
 #[derive(Debug, RouterMatch)]
@@ -80,19 +81,19 @@ fn main() {
     match AppRouterMatch::try_parse(path) {
       Ok(route) => match route {
         AppRouterMatch::User(user_route) => match &user_route.sub_router {
-          Some(UserSubRouterMatch::Profile(profile)) => {
+          RouteState::SubRoute(UserSubRouterMatch::Profile(profile)) => {
             println!("用户资料: ID={}, Tab={:?}", profile.id, profile.query.tab);
           }
-          Some(UserSubRouterMatch::Settings(settings)) => {
+          RouteState::SubRoute(UserSubRouterMatch::Settings(settings)) => {
             println!("用户设置: Tab={:?}", settings.query.tab);
           }
-          None => println!("用户模块根路径"),
+          _ => println!("用户模块根路径"),
         },
         AppRouterMatch::Blog(blog_route) => match &blog_route.sub_router {
-          Some(BlogSubRouterMatch::Post(post)) => {
+          RouteState::SubRoute(BlogSubRouterMatch::Post(post)) => {
             println!("博客文章: Slug={}, Format={:?}", post.slug, post.query.format);
           }
-          None => println!("博客模块根路径"),
+          _ => println!("博客模块根路径"),
         },
       },
       Err(e) => println!("解析失败: {path} -> {e:?}"),
