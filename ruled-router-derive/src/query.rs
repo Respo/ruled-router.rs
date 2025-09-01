@@ -2,9 +2,7 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DeriveInput, GenericArgument, PathArguments, Type, TypePath, Data, Fields, Lit, Meta};
-
-use crate::extract_struct_fields;
+use syn::{Data, DeriveInput, Fields, Lit, Meta, Type, TypePath};
 
 /// Expand the Query derive macro
 pub fn expand_query_derive(input: DeriveInput) -> syn::Result<TokenStream> {
@@ -19,6 +17,9 @@ pub fn expand_query_derive(input: DeriveInput) -> syn::Result<TokenStream> {
 
   // 生成 from_query_map 解析逻辑
   let from_query_map_fields = generate_from_query_map_fields(&fields)?;
+
+  // 生成 query_keys 方法
+  let query_keys: Vec<_> = fields.iter().map(|field| &field.query_name).collect();
 
   let expanded = quote! {
       impl ::ruled_router::traits::Query for #struct_name {
@@ -47,6 +48,10 @@ pub fn expand_query_derive(input: DeriveInput) -> syn::Result<TokenStream> {
           fn to_query_string(&self) -> String {
               self.format()
           }
+
+          fn query_keys() -> Vec<&'static str> {
+              vec![#(#query_keys),*]
+          }
       }
   };
 
@@ -55,9 +60,10 @@ pub fn expand_query_derive(input: DeriveInput) -> syn::Result<TokenStream> {
 
 /// 字段信息结构
 struct FieldInfo {
-    name: syn::Ident,
-    ty: Type,
-    query_name: String,
+  name: syn::Ident,
+  ty: Type,
+  query_name: String,
+  default_value: Option<String>,
 }
 
 /// 提取查询字段信息（包括属性）
@@ -68,11 +74,12 @@ fn extract_query_fields(data: &Data) -> syn::Result<Vec<FieldInfo>> {
         let mut field_info = Vec::new();
         for field in &fields_named.named {
           if let Some(ident) = &field.ident {
-            let query_name = extract_query_name(field, ident)?;
+            let (query_name, default_value) = extract_query_attributes(field, ident)?;
             field_info.push(FieldInfo {
               name: ident.clone(),
               ty: field.ty.clone(),
               query_name,
+              default_value,
             });
           }
         }
@@ -84,19 +91,28 @@ fn extract_query_fields(data: &Data) -> syn::Result<Vec<FieldInfo>> {
   }
 }
 
-/// 提取字段的查询名称（支持 rename 属性）
-fn extract_query_name(field: &syn::Field, default_name: &syn::Ident) -> syn::Result<String> {
+/// 提取字段的查询属性（支持 rename 和 default 属性）
+fn extract_query_attributes(field: &syn::Field, default_name: &syn::Ident) -> syn::Result<(String, Option<String>)> {
+  let mut query_name = default_name.to_string();
+  let mut default_value = None;
+
   for attr in &field.attrs {
     if attr.path().is_ident("query") {
       if let Meta::List(meta_list) = &attr.meta {
         let parser = meta_list.parse_args_with(syn::punctuated::Punctuated::<Meta, syn::Token![,]>::parse_terminated)?;
-        
+
         for meta in parser {
           if let Meta::NameValue(name_value) = meta {
-            if name_value.path.is_ident("rename") {
+            if name_value.path.is_ident("rename") || name_value.path.is_ident("name") {
               if let syn::Expr::Lit(expr_lit) = &name_value.value {
                 if let Lit::Str(lit_str) = &expr_lit.lit {
-                  return Ok(lit_str.value());
+                  query_name = lit_str.value();
+                }
+              }
+            } else if name_value.path.is_ident("default") {
+              if let syn::Expr::Lit(expr_lit) = &name_value.value {
+                if let Lit::Str(lit_str) = &expr_lit.lit {
+                  default_value = Some(lit_str.value());
                 }
               }
             }
@@ -105,7 +121,7 @@ fn extract_query_name(field: &syn::Field, default_name: &syn::Ident) -> syn::Res
       }
     }
   }
-  Ok(default_name.to_string())
+  Ok((query_name, default_value))
 }
 
 /// 生成解析字段的代码
@@ -116,6 +132,7 @@ fn generate_parse_fields(fields: &[FieldInfo]) -> syn::Result<Vec<TokenStream>> 
     let field_name = &field_info.name;
     let field_type = &field_info.ty;
     let query_name = &field_info.query_name;
+    let default_value = &field_info.default_value;
 
     let parse_code = if is_option_type(field_type) {
       // Option<T> 类型使用 get_optional
@@ -126,6 +143,12 @@ fn generate_parse_fields(fields: &[FieldInfo]) -> syn::Result<Vec<TokenStream>> 
       // Vec<T> 类型使用 get_all
       quote! {
           #field_name: parser.get_all(#query_name).iter().map(|s| s.to_string()).collect()
+      }
+    } else if let Some(default_val) = default_value {
+      // 有默认值的类型，先尝试解析，失败则使用默认值
+      quote! {
+          #field_name: parser.get_optional(#query_name)?
+              .unwrap_or_else(|| #default_val.parse().unwrap())
       }
     } else {
       // 其他类型使用 get_parsed
@@ -148,6 +171,7 @@ fn generate_from_query_map_fields(fields: &[FieldInfo]) -> syn::Result<Vec<Token
     let field_name = &field_info.name;
     let field_type = &field_info.ty;
     let query_name = &field_info.query_name;
+    let default_value = &field_info.default_value;
 
     let parse_code = if is_option_type(field_type) {
       // Option<T> 类型
@@ -162,6 +186,15 @@ fn generate_from_query_map_fields(fields: &[FieldInfo]) -> syn::Result<Vec<Token
           #field_name: query_map.get(#query_name)
               .map(|values| values.iter().map(|s| s.to_string()).collect())
               .unwrap_or_default()
+      }
+    } else if let Some(default_val) = default_value {
+      // 有默认值的类型
+      quote! {
+          #field_name: query_map.get(#query_name)
+              .and_then(|values| values.first())
+              .map(|s| s.parse())
+              .unwrap_or_else(|| #default_val.parse())
+              .map_err(|_| ::ruled_router::error::ParseError::type_conversion(format!("Failed to parse parameter: {}", #query_name)))?
       }
     } else {
       // 其他类型
@@ -234,19 +267,4 @@ fn is_vec_type(ty: &Type) -> bool {
     }
   }
   false
-}
-
-/// 提取 Option<T> 或 Vec<T> 中的内部类型 T
-#[allow(dead_code)]
-fn extract_inner_type(ty: &Type) -> Option<&Type> {
-  if let Type::Path(TypePath { path, .. }) = ty {
-    if let Some(segment) = path.segments.last() {
-      if let PathArguments::AngleBracketed(args) = &segment.arguments {
-        if let Some(GenericArgument::Type(inner_ty)) = args.args.first() {
-          return Some(inner_ty);
-        }
-      }
-    }
-  }
-  None
 }

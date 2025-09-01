@@ -4,6 +4,68 @@
 
 use std::fmt;
 
+/// 路由状态枚举
+///
+/// 用于替代 Option<SubRouterMatch>，提供更明确的路由解析状态信息
+/// 支持 serde 序列化/反序列化
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum RouteState<T> {
+  /// 没有子路由（预期的叶子节点）
+  ///
+  /// 表示当前路由是一个叶子节点，不应该有子路由
+  NoSubRoute,
+
+  /// 有子路由
+  ///
+  /// 表示成功解析到子路由
+  SubRoute(T),
+
+  /// 解析失败
+  ///
+  /// 表示尝试解析子路由时失败，包含详细的调试信息
+  ParseFailed {
+    /// 剩余的路径
+    remaining_path: String,
+    /// 尝试匹配的模式列表
+    attempted_patterns: Vec<String>,
+    /// 最接近的匹配信息（可选）
+    closest_match: Option<ClosestMatch>,
+  },
+}
+
+/// 最接近的匹配信息
+///
+/// 用于提供更好的调试信息，帮助开发者理解为什么路由匹配失败
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ClosestMatch {
+  /// 匹配的模式
+  pub pattern: String,
+  /// 匹配的路径长度
+  pub matched_length: usize,
+  /// 失败的原因
+  pub failure_reason: String,
+}
+
+/// 路由调试信息
+///
+/// 包含路由解析过程中的详细信息，用于调试和错误报告
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct RouteDebugInfo {
+  /// 失败的层级
+  pub failed_at_level: usize,
+  /// 已消费的路径
+  pub consumed_path: String,
+  /// 剩余的路径
+  pub remaining_path: String,
+  /// 可用的路由列表
+  pub available_routes: Vec<String>,
+  /// 建议的修复方案
+  pub suggestion: Option<String>,
+}
+
 /// 解析错误类型
 ///
 /// 表示在路由解析过程中可能出现的各种错误情况
@@ -131,6 +193,172 @@ impl ParseError {
       actual: actual.into(),
       position,
     }
+  }
+}
+
+/// RouteState 的实用方法实现
+impl<T> RouteState<T> {
+  /// 创建一个没有子路由的状态
+  pub fn no_sub_route() -> Self {
+    RouteState::NoSubRoute
+  }
+
+  /// 创建一个有子路由的状态
+  pub fn sub_route(sub_router: T) -> Self {
+    RouteState::SubRoute(sub_router)
+  }
+
+  /// 创建一个解析失败的状态
+  pub fn parse_failed<S: Into<String>>(
+    remaining_path: S,
+    attempted_patterns: Vec<String>,
+    closest_match: Option<ClosestMatch>,
+  ) -> Self {
+    RouteState::ParseFailed {
+      remaining_path: remaining_path.into(),
+      attempted_patterns,
+      closest_match,
+    }
+  }
+
+  /// 检查是否没有子路由
+  pub fn is_no_sub_route(&self) -> bool {
+    matches!(self, RouteState::NoSubRoute)
+  }
+
+  /// 检查是否有子路由
+  pub fn is_sub_route(&self) -> bool {
+    matches!(self, RouteState::SubRoute(_))
+  }
+
+  /// 检查是否解析失败
+  pub fn is_parse_failed(&self) -> bool {
+    matches!(self, RouteState::ParseFailed { .. })
+  }
+
+  /// 获取子路由的引用（如果存在）
+  pub fn as_sub_route(&self) -> Option<&T> {
+    match self {
+      RouteState::SubRoute(sub) => Some(sub),
+      _ => None,
+    }
+  }
+
+  /// 获取子路由的可变引用（如果存在）
+  pub fn as_sub_route_mut(&mut self) -> Option<&mut T> {
+    match self {
+      RouteState::SubRoute(sub) => Some(sub),
+      _ => None,
+    }
+  }
+
+  /// 将 RouteState 转换为 Option（向后兼容）
+  pub fn into_option(self) -> Option<T> {
+    match self {
+      RouteState::SubRoute(sub) => Some(sub),
+      _ => None,
+    }
+  }
+
+  /// 从 Option 创建 RouteState（向后兼容）
+  pub fn from_option(option: Option<T>) -> Self {
+    match option {
+      Some(sub) => RouteState::SubRoute(sub),
+      None => RouteState::NoSubRoute,
+    }
+  }
+
+  /// 映射子路由类型
+  pub fn map<U, F>(self, f: F) -> RouteState<U>
+  where
+    F: FnOnce(T) -> U,
+  {
+    match self {
+      RouteState::NoSubRoute => RouteState::NoSubRoute,
+      RouteState::SubRoute(sub) => RouteState::SubRoute(f(sub)),
+      RouteState::ParseFailed {
+        remaining_path,
+        attempted_patterns,
+        closest_match,
+      } => RouteState::ParseFailed {
+        remaining_path,
+        attempted_patterns,
+        closest_match,
+      },
+    }
+  }
+
+  /// 获取调试信息（如果是解析失败状态）
+  pub fn debug_info(&self) -> Option<RouteDebugInfo> {
+    match self {
+      RouteState::ParseFailed {
+        remaining_path,
+        attempted_patterns,
+        closest_match,
+      } => Some(RouteDebugInfo {
+        failed_at_level: 0,           // 默认值，可以在具体使用时设置
+        consumed_path: String::new(), // 默认值，可以在具体使用时设置
+        remaining_path: remaining_path.clone(),
+        available_routes: attempted_patterns.clone(),
+        suggestion: closest_match.as_ref().map(|m| {
+          format!(
+            "Did you mean '{}'? (matched {} characters, failed because: {})",
+            m.pattern, m.matched_length, m.failure_reason
+          )
+        }),
+      }),
+      _ => None,
+    }
+  }
+}
+
+/// ClosestMatch 的实用方法实现
+impl ClosestMatch {
+  /// 创建一个新的最接近匹配信息
+  pub fn new<S1: Into<String>, S2: Into<String>>(pattern: S1, matched_length: usize, failure_reason: S2) -> Self {
+    ClosestMatch {
+      pattern: pattern.into(),
+      matched_length,
+      failure_reason: failure_reason.into(),
+    }
+  }
+}
+
+/// RouteDebugInfo 的实用方法实现
+impl RouteDebugInfo {
+  /// 创建一个新的路由调试信息
+  pub fn new<S1: Into<String>, S2: Into<String>>(
+    failed_at_level: usize,
+    consumed_path: S1,
+    remaining_path: S2,
+    available_routes: Vec<String>,
+    suggestion: Option<String>,
+  ) -> Self {
+    RouteDebugInfo {
+      failed_at_level,
+      consumed_path: consumed_path.into(),
+      remaining_path: remaining_path.into(),
+      available_routes,
+      suggestion,
+    }
+  }
+
+  /// 生成人类可读的错误消息
+  pub fn to_error_message(&self) -> String {
+    let mut message = format!(
+      "Route parsing failed at level {}: consumed '{}', remaining '{}'",
+      self.failed_at_level, self.consumed_path, self.remaining_path
+    );
+
+    if !self.available_routes.is_empty() {
+      message.push_str(&format!("\nAvailable routes: {}", self.available_routes.join(", ")));
+    }
+
+    if let Some(suggestion) = &self.suggestion {
+      message.push_str(&format!("\nSuggestion: {suggestion}"));
+    }
+
+    message
   }
 }
 

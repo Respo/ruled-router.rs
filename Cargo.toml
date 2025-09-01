@@ -1,7 +1,8 @@
 [workspace]
 members = [
     "ruled-router",
-    "ruled-router-derive"
+    "ruled-router-derive",
+    "web-page-example"
 ]
 resolver = "2"
 

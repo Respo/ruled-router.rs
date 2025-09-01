@@ -1,25 +1,40 @@
 [package]
 name = "ruled-router"
-version = "0.1.0"
+version = "0.0.4"
 edition = "2021"
 authors = ["Your Name <your.email@example.com>"]
 license = "MIT OR Apache-2.0"
 description = "A high-performance router library with derive macro support for Rust"
-repository = "https://github.com/yourusername/ruled-router"
+repository = "https://github.com/Respo/ruled-router.rs"
+documentation = "https://docs.rs/ruled-router"
+homepage = "https://github.com/Respo/ruled-router.rs"
 keywords = ["router", "web", "http", "derive", "macro"]
 categories = ["web-programming", "network-programming"]
 readme = "../README.md"
 
 [dependencies]
-ruled-router-derive = { path = "../ruled-router-derive", optional = true }
+ruled-router-derive = { version = "0.0.4", path = "../ruled-router-derive", optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
+web-sys = { version = "0.3", features = [
+  "console",
+  "Document",
+  "Element",
+  "HtmlElement",
+  "Location",
+  "History",
+  "Window",
+  "PopStateEvent",
+  "EventTarget",
+  "Event",
+  "Url",
+], optional = true }
+wasm-bindgen = { version = "0.2", optional = true }
 
 [features]
 default = ["derive"]
 derive = ["ruled-router-derive"]
+dom = ["web-sys", "wasm-bindgen"]
+serde = ["dep:serde"]
 
 [dev-dependencies]
 trybuild = { workspace = true }
-
-[[example]]
-name = "query_field_usage"
-path = "examples/query_field_usage.rs"

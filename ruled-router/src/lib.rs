@@ -11,12 +11,16 @@ pub mod prelude;
 pub mod traits;
 pub mod utils;
 
+// DOM 模块（只有在启用 dom feature 时才编译）
+#[cfg(feature = "dom")]
+pub mod dom;
+
 // 重新导出核心类型
 pub use error::{ParseError, ParseResult};
 pub use formatter::{PathFormatter, QueryFormatter, UrlFormatter};
 pub use parser::{PathParser, QueryParser};
-pub use traits::{FromParam, Query, Router, ToParam};
+pub use traits::{FromParam, NoSubRouter, Query, RouteMatcher, RouterData, ToParam};
 
 // 重新导出派生宏（当启用 derive 特性时）
 #[cfg(feature = "derive")]
-pub use ruled_router_derive::{Query, QueryString, Router};
+pub use ruled_router_derive::{QueryDerive, QueryString, RouterData, RouterMatch};

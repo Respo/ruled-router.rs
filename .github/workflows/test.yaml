@@ -1,0 +1,96 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+name: Test
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        run: cargo test --all-features
+
+      - name: Run doc tests
+        run: cargo test --doc
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run security audit
+        run: cargo audit
+
+  page-demo:
+    name: Page Demo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Build web-page-example
+        run: |
+          cd web-page-example
+          wasm-pack build --target web --out-dir pkg --release
+          mkdir -p dist
+          cp index.html dist/
+          cp -r pkg dist/
+
+      - name: Deploy to server
+        id: deploy
+        uses: Pendect/action-rsyncer@v2.0.0
+        env:
+          DEPLOY_KEY: ${{secrets.rsync_private_key}}
+        with:
+          flags: "-avzr --progress"
+          options: ""
+          ssh_options: ""
+          src: "web-page-example/dist/*"
+          dest: "rsync-user@tiye.me:/web-assets/repo/${{ github.repository }}"
+
+      - name: Display status from deploy
+        run: echo "${{ steps.deploy.outputs.status }}"

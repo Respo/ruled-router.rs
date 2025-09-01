@@ -73,7 +73,7 @@ impl PathParser {
             return Err(ParseError::invalid_path("Parameter must have a name"));
           }
           parsed_segments.push(PathSegment::Parameter(param_name.to_string()));
-          
+
           // 第二部分是可选参数
           let optional_name = parts[1];
           if optional_name.is_empty() {
@@ -83,7 +83,7 @@ impl PathParser {
           continue;
         }
       }
-      
+
       let parsed_segment = if let Some(name) = segment.strip_prefix('*') {
         // 通配符段
         if name.is_empty() {
@@ -104,7 +104,7 @@ impl PathParser {
         PathSegment::Parameter(name.to_string())
       } else if segment.starts_with('{') && segment.ends_with('}') {
         // 大括号参数段 ({name})
-        let name = &segment[1..segment.len()-1];
+        let name = &segment[1..segment.len() - 1];
         if name.is_empty() {
           return Err(ParseError::invalid_path("Parameter must have a name"));
         }
@@ -280,6 +280,58 @@ impl PathParser {
         PathSegment::Literal(_) => None,
       })
       .collect()
+  }
+
+  /// 计算路径消费的长度
+  ///
+  /// # 参数
+  ///
+  /// * `path` - 要匹配的路径字符串
+  ///
+  /// # 返回值
+  ///
+  /// 当前模式消费的路径长度
+  pub fn consumed_length(&self, path: &str) -> ParseResult<usize> {
+    let path_segments = split_path_segments(path);
+    let mut consumed_segments = 0;
+
+    for pattern_segment in &self.pattern_segments {
+      match pattern_segment {
+        PathSegment::Literal(_) | PathSegment::Parameter(_) => {
+          if consumed_segments >= path_segments.len() {
+            break;
+          }
+          consumed_segments += 1;
+        }
+        PathSegment::OptionalParameter(_) => {
+          if consumed_segments < path_segments.len() {
+            consumed_segments += 1;
+          }
+        }
+        PathSegment::Wildcard(_) => {
+          // 通配符消耗所有剩余段
+          consumed_segments = path_segments.len();
+          break;
+        }
+      }
+    }
+
+    // 计算实际消费的字符长度
+    if consumed_segments == 0 {
+      return Ok(0);
+    }
+
+    let consumed_path_segments = &path_segments[..consumed_segments];
+    let consumed_length = if consumed_path_segments.is_empty() {
+      0
+    } else {
+      // 计算消费的字符数：段长度 + 分隔符
+      let segments_length: usize = consumed_path_segments.iter().map(|s| s.len()).sum();
+      let separators_length = consumed_segments; // 每个段前面有一个 '/'
+      segments_length + separators_length
+    };
+
+    Ok(consumed_length)
   }
 }
 

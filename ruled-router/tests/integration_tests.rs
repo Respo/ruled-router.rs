@@ -6,8 +6,9 @@ use ruled_router::{
   error::ParseError,
   formatter::{PathFormatter, QueryFormatter, UrlFormatter},
   parser::{PathParser, QueryParser},
-  traits::{Query, Router, ToParam},
+  traits::{Query, RouterData, ToParam},
 };
+use ruled_router_derive::QueryDerive;
 use std::collections::HashMap;
 
 /// 简单的用户路由
@@ -16,7 +17,9 @@ struct UserRoute {
   id: u32,
 }
 
-impl Router for UserRoute {
+impl RouterData for UserRoute {
+  type SubRouterMatch = ::ruled_router::NoSubRouter;
+
   fn parse(path: &str) -> Result<Self, ParseError> {
     let (path_part, _) = ruled_router::utils::split_path_query(path);
     let parser = PathParser::new("/users/:id")?;
@@ -45,50 +48,10 @@ impl Router for UserRoute {
 }
 
 /// 简单的查询参数
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, QueryDerive)]
 struct SimpleQuery {
   name: Option<String>,
   active: Option<bool>,
-}
-
-impl Query for SimpleQuery {
-  fn parse(query: &str) -> Result<Self, ParseError> {
-    let parser = QueryParser::new(query)?;
-
-    Ok(Self {
-      name: parser.get_optional("name")?,
-      active: parser.get_optional("active")?,
-    })
-  }
-
-  fn format(&self) -> String {
-    let mut formatter = QueryFormatter::new();
-
-    if let Some(ref name) = self.name {
-      formatter.set("name", name.clone());
-    }
-
-    if let Some(active) = self.active {
-      formatter.set("active", active.to_string());
-    }
-
-    formatter.format()
-  }
-
-  fn from_query_map(query_map: &std::collections::HashMap<String, Vec<String>>) -> Result<Self, ParseError> {
-    Ok(Self {
-      name: query_map.get("name")
-        .and_then(|values| values.first())
-        .map(|s| s.to_string()),
-      active: query_map.get("active")
-        .and_then(|values| values.first())
-        .and_then(|s| s.parse().ok()),
-    })
-  }
-
-  fn to_query_string(&self) -> String {
-    self.format()
-  }
 }
 
 #[cfg(test)]
