@@ -23,9 +23,9 @@ struct UserRoute {
 为结构体自动生成查询参数解析器：
 
 ```rust
-use ruled_router_derive::Query;
+use ruled_router_derive::QueryDerive;
 
-#[derive(Query)]
+#[derive(QueryDerive)]
 struct SearchQuery {
     q: Option<String>,
     page: Option<u32>,

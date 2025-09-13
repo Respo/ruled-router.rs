@@ -80,7 +80,7 @@ python3 -m http.server 8000
 这是一个 Cargo workspace 项目，包含以下 crate：
 
 - `ruled-router` - 主库，包含核心 trait 和实现
-- `ruled-router-derive` - 过程宏库，提供 `#[derive(RouterData)]` 和 `#[derive(Query)]` 宏
+- `ruled-router-derive` - 过程宏库，提供 `#[derive(RouterData)]` 和 `#[derive(QueryDerive)]` 宏
 
 ### 开发说明
 
@@ -124,38 +124,39 @@ enum AppRouter {
 
 ```rust
 use ruled_router::prelude::*;
+use ruled_router_derive::QueryDerive;
 
 // Define route structure
-#[derive(RouterData, Debug)]
-#[router(pattern = "/users/:id")]
+#[derive(RouterData)]
+#[router(pattern = "/users/:id")] // Define path pattern only once
 struct UserRoute {
-    id: u32,
-    #[query]
-    query: UserQuery,
+  id: u32,
+  #[query]
+  query: UserQuery,
 }
 
 // Define query parameters
-#[derive(Query, Debug)]
+#[derive(QueryDerive)]
 struct UserQuery {
-    #[query(name = "tab")]
-    tab: Option<String>,
-    #[query(name = "page", default = "1")]
-    page: u32,
+  #[query(name = "tab")]
+  tab: Option<String>,
+  #[query(name = "page", default = "1")]
+  page: u32,
 }
 
 fn main() {
-    // Parse route
-    let path = "/users/123?tab=profile&page=2";
-    let route = UserRoute::parse(path).unwrap();
+  // Parse route
+  let path = "/users/123?tab=profile&page=2";
+  let route = UserRoute::parse(path).unwrap();
 
-    println!("用户ID: {}", route.id);
-    println!("标签页: {:?}", route.query.tab);
-    println!("页码: {}", route.query.page);
+  println!("用户ID: {}", route.id);
+  println!("标签页: {:?}", route.query.tab);
+  println!("页码: {}", route.query.page);
 
-    // Format route
-    let formatted = route.format();
-    println!("格式化结果: {}", formatted);
-    // Output: /users/123?tab=profile&page=2
+  // Format route
+  let formatted = route.format();
+  println!("格式化结果: {formatted}");
+  // Output: /users/123?tab=profile&page=2
 }
 ```
 
@@ -265,7 +266,7 @@ struct ProductDetailRoute {
 }
 
 // 简单查询参数定义
-#[derive(Query, Debug)]
+#[derive(QueryDerive, Debug)]
 struct SimpleQuery {
     #[query(name = "format")]
     format: Option<String>,

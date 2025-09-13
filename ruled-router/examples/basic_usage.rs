@@ -2,7 +2,7 @@ use ruled_router::prelude::*;
 use ruled_router_derive::QueryDerive;
 
 // Define route structure
-#[derive(RouterData)]
+#[derive(RouterData, Debug)]
 #[router(pattern = "/users/:id")] // Define path pattern only once
 struct UserRoute {
   id: u32,
@@ -11,7 +11,7 @@ struct UserRoute {
 }
 
 // Define query parameters
-#[derive(QueryDerive)]
+#[derive(QueryDerive, Debug)]
 struct UserQuery {
   #[query(name = "tab")]
   tab: Option<String>,
@@ -24,6 +24,7 @@ fn main() {
   let path = "/users/123?tab=profile&page=2";
   let route = UserRoute::parse(path).unwrap();
 
+  println!("{route:?}");
   println!("用户ID: {}", route.id);
   println!("标签页: {:?}", route.query.tab);
   println!("页码: {}", route.query.page);

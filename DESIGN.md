@@ -468,7 +468,7 @@ struct SystemConfigRoute {
 }
 
 // 简单查询参数定义
-#[derive(Query)]
+#[derive(QueryDerive)]
 struct SimpleQuery {
     #[query(name = "format")]
     format: Option<String>,
@@ -576,7 +576,7 @@ fn main() {
 #### 输入结构体示例
 
 ```rust
-#[derive(Query)]
+#[derive(QueryDerive)]
 struct CategoryQuery {
     #[query(name = "page", default = "1")]
     page: u32,
