@@ -20,7 +20,7 @@ struct UserRoute {
 impl RouterData for UserRoute {
   type SubRouterMatch = ::ruled_router::NoSubRouter;
 
-  fn parse(path: &str) -> Result<Self, ParseError> {
+  fn parse_route(path: &str) -> Result<Self, ParseError> {
     let (path_part, _) = ruled_router::utils::split_path_query(path);
     let parser = PathParser::new("/users/:id")?;
     let params = parser.match_path(path_part)?;
@@ -60,7 +60,7 @@ mod tests {
 
   #[test]
   fn test_basic_path_parsing() {
-    let route = UserRoute::parse("/users/123").unwrap();
+    let route = UserRoute::parse_route("/users/123").unwrap();
     assert_eq!(route.id, 123);
 
     let formatted = route.format();
@@ -200,8 +200,8 @@ mod tests {
   #[test]
   fn test_error_handling() {
     // 测试路径解析错误
-    assert!(UserRoute::parse("/posts/123").is_err());
-    assert!(UserRoute::parse("/users/abc").is_err());
+    assert!(UserRoute::parse_route("/posts/123").is_err());
+    assert!(UserRoute::parse_route("/users/abc").is_err());
 
     // 测试查询解析错误
     let parser = QueryParser::new("id=abc").unwrap();
@@ -218,7 +218,7 @@ mod tests {
     // 测试路由的往返一致性
     let original_route = UserRoute { id: 456 };
     let formatted = original_route.format();
-    let parsed_route = UserRoute::parse(&formatted).unwrap();
+    let parsed_route = UserRoute::parse_route(&formatted).unwrap();
     assert_eq!(original_route, parsed_route);
 
     // 测试查询的往返一致性

@@ -426,7 +426,7 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
           impl ::ruled_router::traits::RouterData for #struct_name {
           type SubRouterMatch = #sub_router_type;
 
-          fn parse(path: &str) -> Result<Self, ::ruled_router::error::ParseError> {
+          fn parse_route(path: &str) -> Result<Self, ::ruled_router::error::ParseError> {
               let (path_part, query_part) = ::ruled_router::utils::split_path_query(path);
               let parser = ::ruled_router::parser::PathParser::new(#pattern)?;
               let params = parser.match_path(path_part)?;
@@ -460,7 +460,7 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
                   Ok(params) => params,
                   Err(_) => {
                       // 如果无法匹配，尝试用完整路径解析（向后兼容）
-                      return Self::parse(path).map(|router| (router, RouteState::no_sub_route()));
+                      return Self::parse_route(path).map(|router| (router, RouteState::no_sub_route()));
                   }
               };
 

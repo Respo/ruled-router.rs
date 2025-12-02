@@ -147,7 +147,7 @@ struct UserQuery {
 fn main() {
   // Parse route
   let path = "/users/123?tab=profile&page=2";
-  let route = UserRoute::parse(path).unwrap();
+  let route = UserRoute::parse_route(path).unwrap();
 
   println!("用户ID: {}", route.id);
   println!("标签页: {:?}", route.query.tab);

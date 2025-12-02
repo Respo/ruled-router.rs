@@ -215,9 +215,9 @@ pub trait RouterData: Sized {
   /// ```rust,ignore
   /// use ruled_router::RouterData;
   ///
-  /// let route = MyRoute::parse("/user/123?tab=profile")?;
+  /// let route = MyRoute::parse_route("/user/123?tab=profile")?;
   /// ```
-  fn parse(path: &str) -> Result<Self, ParseError>;
+  fn parse_route(path: &str) -> Result<Self, ParseError>;
 
   /// 将路由格式化为路径字符串
   ///
@@ -288,7 +288,7 @@ pub trait RouterData: Sized {
   /// ```
   fn parse_with_sub(path: &str) -> Result<(Self, RouteState<Self::SubRouterMatch>), ParseError> {
     // 默认实现：只解析当前路由，不处理子路由
-    let route = Self::parse(path)?;
+    let route = Self::parse_route(path)?;
     Ok((route, RouteState::NoSubRoute))
   }
 
@@ -333,7 +333,7 @@ pub trait RouterData: Sized {
   /// 当前路由消费的路径长度
   fn consumed_length(path: &str) -> Result<usize, ParseError> {
     // 默认实现：尝试解析并计算消费的长度
-    let _route = Self::parse(path)?;
+    let _route = Self::parse_route(path)?;
     // 这里需要具体的实现来计算实际消费的长度
     // 暂时返回整个路径的长度
     Ok(path.len())

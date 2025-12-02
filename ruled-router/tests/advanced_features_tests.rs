@@ -47,7 +47,7 @@ struct ApiRoute {
 impl RouterData for ApiRoute {
   type SubRouterMatch = ::ruled_router::NoSubRouter;
 
-  fn parse(path: &str) -> Result<Self, ParseError> {
+  fn parse_route(path: &str) -> Result<Self, ParseError> {
     let (path_part, _) = ruled_router::utils::split_path_query(path);
     let segments: Vec<&str> = path_part.trim_start_matches('/').split('/').collect();
 
@@ -241,7 +241,7 @@ impl FullRoute {
     let (path, query_str) = ruled_router::utils::split_path_query(url);
     let query_str = query_str.unwrap_or("");
 
-    let api = ApiRoute::parse(path)?;
+    let api = ApiRoute::parse_route(path)?;
     let query = AdvancedSearchQuery::parse(query_str)?;
 
     Ok(Self { api, query })
@@ -277,19 +277,19 @@ mod tests {
 
   #[test]
   fn test_api_route_parsing() {
-    let route = ApiRoute::parse("/api/v1/users").unwrap();
+    let route = ApiRoute::parse_route("/api/v1/users").unwrap();
     assert_eq!(route.version, "v1");
     assert_eq!(route.resource, "users");
     assert_eq!(route.id, None);
     assert_eq!(route.action, None);
 
-    let route = ApiRoute::parse("/api/v2/posts/123").unwrap();
+    let route = ApiRoute::parse_route("/api/v2/posts/123").unwrap();
     assert_eq!(route.version, "v2");
     assert_eq!(route.resource, "posts");
     assert_eq!(route.id, Some(123));
     assert_eq!(route.action, None);
 
-    let route = ApiRoute::parse("/api/v1/users/456/edit").unwrap();
+    let route = ApiRoute::parse_route("/api/v1/users/456/edit").unwrap();
     assert_eq!(route.version, "v1");
     assert_eq!(route.resource, "users");
     assert_eq!(route.id, Some(456));
@@ -332,9 +332,9 @@ mod tests {
   #[test]
   fn test_error_handling() {
     // 测试无效的 API 路由
-    assert!(ApiRoute::parse("/invalid").is_err());
-    assert!(ApiRoute::parse("/api").is_err());
-    assert!(ApiRoute::parse("/api/v1").is_err());
+    assert!(ApiRoute::parse_route("/invalid").is_err());
+    assert!(ApiRoute::parse_route("/api").is_err());
+    assert!(ApiRoute::parse_route("/api/v1").is_err());
 
     // 测试无效的用户角色
     let query_str = "role=invalid_role";

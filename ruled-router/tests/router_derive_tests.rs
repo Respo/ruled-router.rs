@@ -74,7 +74,7 @@ mod tests {
 
   #[test]
   fn test_user_route_derive() {
-    let route = UserRoute::parse("/users/123").unwrap();
+    let route = UserRoute::parse_route("/users/123").unwrap();
     assert_eq!(route.id, 123);
     assert_eq!(route.format(), "/users/123");
     assert_eq!(UserRoute::pattern(), "/users/:id");
@@ -82,7 +82,7 @@ mod tests {
 
   #[test]
   fn test_blog_route_derive() {
-    let route = BlogRoute::parse("/blog/tech/rust-tips").unwrap();
+    let route = BlogRoute::parse_route("/blog/tech/rust-tips").unwrap();
     assert_eq!(route.category, "tech");
     assert_eq!(route.slug, "rust-tips");
     assert_eq!(route.format(), "/blog/tech/rust-tips");
@@ -91,7 +91,7 @@ mod tests {
 
   #[test]
   fn test_api_route_derive() {
-    let route = ApiRoute::parse("/api/v1/users/456/posts/789").unwrap();
+    let route = ApiRoute::parse_route("/api/v1/users/456/posts/789").unwrap();
     assert_eq!(route.version, "v1");
     assert_eq!(route.user_id, 456);
     assert_eq!(route.post_id, 789);
@@ -109,26 +109,26 @@ mod tests {
   #[test]
   fn test_error_handling() {
     // 测试无效路径
-    assert!(UserRoute::parse("/invalid").is_err());
-    assert!(BlogRoute::parse("/blog/only-one-param").is_err());
-    assert!(ApiRoute::parse("/api/v1/incomplete").is_err());
+    assert!(UserRoute::parse_route("/invalid").is_err());
+    assert!(BlogRoute::parse_route("/blog/only-one-param").is_err());
+    assert!(ApiRoute::parse_route("/api/v1/incomplete").is_err());
 
     // 测试类型转换错误
-    assert!(UserRoute::parse("/users/not-a-number").is_err());
-    assert!(ApiRoute::parse("/api/v1/users/not-a-number/posts/123").is_err());
+    assert!(UserRoute::parse_route("/users/not-a-number").is_err());
+    assert!(ApiRoute::parse_route("/api/v1/users/not-a-number/posts/123").is_err());
   }
 
   #[test]
   fn test_roundtrip_consistency() {
     let user_route = UserRoute { id: 123 };
-    let parsed = UserRoute::parse(&user_route.format()).unwrap();
+    let parsed = UserRoute::parse_route(&user_route.format()).unwrap();
     assert_eq!(user_route, parsed);
 
     let blog_route = BlogRoute {
       category: "tech".to_string(),
       slug: "rust-guide".to_string(),
     };
-    let parsed = BlogRoute::parse(&blog_route.format()).unwrap();
+    let parsed = BlogRoute::parse_route(&blog_route.format()).unwrap();
     assert_eq!(blog_route, parsed);
 
     let api_route = ApiRoute {
@@ -136,14 +136,14 @@ mod tests {
       user_id: 999,
       post_id: 12345,
     };
-    let parsed = ApiRoute::parse(&api_route.format()).unwrap();
+    let parsed = ApiRoute::parse_route(&api_route.format()).unwrap();
     assert_eq!(api_route, parsed);
   }
 
   #[test]
   fn test_search_route_with_query_params() {
     // 测试带查询参数的路由解析
-    let route = SearchRoute::parse("/search/tech?q=rust&page=2&limit=10&tags=web&tags=backend").unwrap();
+    let route = SearchRoute::parse_route("/search/tech?q=rust&page=2&limit=10&tags=web&tags=backend").unwrap();
     assert_eq!(route.category, "tech");
     assert_eq!(route.params.q, Some("rust".to_string()));
     assert_eq!(route.params.page, Some(2));
@@ -166,7 +166,7 @@ mod tests {
   #[test]
   fn test_module_route_with_sub_router() {
     // 测试带子路由的模块路由
-    let route = ModuleRoute::parse("/modules/auth?version=v1&debug=true").unwrap();
+    let route = ModuleRoute::parse_route("/modules/auth?version=v1&debug=true").unwrap();
     assert_eq!(route.name, "auth");
     assert_eq!(route.options.version, Some("v1".to_string()));
     assert_eq!(route.options.debug, Some(true));
@@ -185,7 +185,7 @@ mod tests {
   #[test]
   fn test_empty_query_params() {
     // 测试没有查询参数的情况
-    let route = SearchRoute::parse("/search/books").unwrap();
+    let route = SearchRoute::parse_route("/search/books").unwrap();
     assert_eq!(route.category, "books");
     assert_eq!(route.params.q, None);
     assert_eq!(route.params.page, None);
@@ -213,23 +213,23 @@ mod tests {
   #[test]
   fn test_complex_query_parameter_types() {
     // 测试复杂查询参数类型的处理
-    let route = ModuleRoute::parse("/modules/payment?version=v2.1&debug=false").unwrap();
+    let route = ModuleRoute::parse_route("/modules/payment?version=v2.1&debug=false").unwrap();
     assert_eq!(route.name, "payment");
     assert_eq!(route.options.version, Some("v2.1".to_string()));
     assert_eq!(route.options.debug, Some(false));
 
     // 测试布尔值的不同表示
-    let route_true = ModuleRoute::parse("/modules/test?debug=1").unwrap();
+    let route_true = ModuleRoute::parse_route("/modules/test?debug=1").unwrap();
     assert_eq!(route_true.options.debug, Some(true));
 
-    let route_false = ModuleRoute::parse("/modules/test?debug=0").unwrap();
+    let route_false = ModuleRoute::parse_route("/modules/test?debug=0").unwrap();
     assert_eq!(route_false.options.debug, Some(false));
   }
 
   #[test]
   fn test_url_encoding_in_params() {
     // 测试 URL 编码的参数
-    let route = SearchRoute::parse("/search/tech?q=rust%20programming&tags=web%20dev").unwrap();
+    let route = SearchRoute::parse_route("/search/tech?q=rust%20programming&tags=web%20dev").unwrap();
     assert_eq!(route.category, "tech");
     assert_eq!(route.params.q, Some("rust programming".to_string()));
     assert_eq!(route.params.tags, vec!["web dev".to_string()]);

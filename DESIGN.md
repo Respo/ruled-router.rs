@@ -56,7 +56,7 @@ ruled-router/
 /// 用于具体的路由结构体，负责路径参数的解析和格式化
 pub trait Router: Sized {
     /// 从路径字符串解析路由
-    fn parse(path: &str) -> Result<Self, ParseError>;
+    fn parse_route(path: &str) -> Result<Self, ParseError>;
 
     /// 支持子路由的解析方法
     fn parse_with_sub(path: &str) -> Result<(Self, Option<String>), ParseError>;
@@ -188,7 +188,7 @@ struct UserProfile {
 
 ```rust
 impl Router for UserProfile {
-    fn parse(path: &str) -> Result<Self, ParseError> {
+    fn parse_route(path: &str) -> Result<Self, ParseError> {
         // 1. 分离路径和查询参数
         let (path_part, query_part) = split_path_query(path);
 
@@ -204,7 +204,7 @@ impl Router for UserProfile {
         let options = ProfileOptions::parse(query_part.unwrap_or(""))?;
 
         // 5. 处理子路由（如果存在）
-        let sub_router = None; // 在 parse 方法中不处理子路由
+        let sub_router = None; // 在 parse_route 方法中不处理子路由
 
         Ok(UserProfile { id, options, sub_router })
     }
@@ -1029,7 +1029,7 @@ pub trait Router: Sized {
     type SubRouterMatch: RouteMatcher = NoSubRouter;
 
     // 现有方法...
-    fn parse(path: &str) -> Result<Self, ParseError>;
+    fn parse_route(path: &str) -> Result<Self, ParseError>;
     fn format(&self) -> String;
     fn pattern() -> &'static str;
 

@@ -45,7 +45,7 @@ impl PerformanceTester {
     let mut success_count = 0;
 
     for route_str in &self.test_routes {
-      if ProductRoute::parse(route_str).is_ok() {
+      if ProductRoute::parse_route(route_str).is_ok() {
         success_count += 1;
       }
     }
@@ -111,9 +111,9 @@ impl PerformanceTester {
     let mut success_count = 0;
 
     for route_str in &self.test_routes {
-      if let Ok(route) = ProductRoute::parse(route_str) {
+      if let Ok(route) = ProductRoute::parse_route(route_str) {
         let formatted = route.format();
-        if ProductRoute::parse(&formatted).is_ok() {
+        if ProductRoute::parse_route(&formatted).is_ok() {
           success_count += 1;
         }
       }
@@ -179,7 +179,7 @@ mod tests {
 
     let start = Instant::now();
     for route_str in &routes {
-      let route = ProductRoute::parse(route_str).unwrap();
+      let route = ProductRoute::parse_route(route_str).unwrap();
       let _formatted = route.format();
     }
     let elapsed = start.elapsed();

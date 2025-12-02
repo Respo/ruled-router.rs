@@ -37,7 +37,7 @@ fn main() {
   ];
 
   for path in test_paths {
-    match SearchRoute::parse(path) {
+    match SearchRoute::parse_route(path) {
       Ok(route) => {
         let query = &route.query;
         println!("\n路径: {path}");

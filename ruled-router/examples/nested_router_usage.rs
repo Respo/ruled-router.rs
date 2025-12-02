@@ -516,7 +516,7 @@ mod tests {
 
   #[test]
   fn test_user_basic_info_route() {
-    let route = UserBasicInfoRoute::parse("/basic/123?format=json").unwrap();
+    let route = UserBasicInfoRoute::parse_route("/basic/123?format=json").unwrap();
     assert_eq!(route.id, 123);
     assert_eq!(route.query.format, Some("json".to_string()));
   }
@@ -530,7 +530,7 @@ mod tests {
 
   #[test]
   fn test_shop_product_route() {
-    let route = ProductDetailRoute::parse("/detail/electronics/555?format=xml").unwrap();
+    let route = ProductDetailRoute::parse_route("/detail/electronics/555?format=xml").unwrap();
     assert_eq!(route.category, "electronics");
     assert_eq!(route.id, 555);
     assert_eq!(route.query.format, Some("xml".to_string()));
@@ -538,7 +538,7 @@ mod tests {
 
   #[test]
   fn test_admin_system_route() {
-    let route = SystemConfigRoute::parse("/config?format=yaml").unwrap();
+    let route = SystemConfigRoute::parse_route("/config?format=yaml").unwrap();
     assert_eq!(route.query.format, Some("yaml".to_string()));
   }
 }

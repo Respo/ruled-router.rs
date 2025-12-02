@@ -80,7 +80,7 @@ fn generate_try_parse_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
               } else {
                 prefix.to_string()
               };
-              if let Ok(route) = <#route_type as ::ruled_router::traits::RouterData>::parse(&full_path) {
+              if let Ok(route) = <#route_type as ::ruled_router::traits::RouterData>::parse_route(&full_path) {
                 return Ok(Self::#variant_name(route));
               }
             }
@@ -97,7 +97,7 @@ fn generate_try_parse_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
             return Ok(Self::#variant_name(route));
           }
         // 如果递归解析失败，回退到普通解析
-        if let Ok(route) = <#route_type as ::ruled_router::traits::RouterData>::parse(path) {
+        if let Ok(route) = <#route_type as ::ruled_router::traits::RouterData>::parse_route(path) {
           return Ok(Self::#variant_name(route));
         }
       }

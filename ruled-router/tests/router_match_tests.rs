@@ -255,7 +255,7 @@ mod tests {
     let formatted = app_match.format();
 
     // 尝试解析格式化后的字符串
-    let parsed_route = UserRoute::parse(&formatted).unwrap();
+    let parsed_route = UserRoute::parse_route(&formatted).unwrap();
 
     assert_eq!(parsed_route.id, original_route.id);
     assert_eq!(parsed_route.query.page, original_route.query.page);
