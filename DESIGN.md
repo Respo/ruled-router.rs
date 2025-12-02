@@ -15,12 +15,13 @@ Ruled Router 采用**面向数据编程**的设计理念，将路由定义视为
 
 ```
 层级 1: RouteMatcher (枚举) → Router (结构体)
-层级 2: RouteMatcher (枚举) → Router (结构体)  
+层级 2: RouteMatcher (枚举) → Router (结构体)
 层级 3: RouteMatcher (枚举) → Router (结构体)
 ...
 ```
 
 这种交替模式确保了：
+
 - **RouteMatcher**：负责路由分发和匹配，使用枚举表示不同的路由选择
 - **Router**：负责具体路由的解析和格式化，使用结构体表示路由数据
 
@@ -155,7 +156,7 @@ impl RouteMatcher for AppRouterMatch {
     fn try_parse(path: &str) -> Result<Self, ParseError> {
         // 自动提取前缀
         let user_prefix = <UserRoute as Router>::pattern(); // "/users"
-        
+
         if path.starts_with(user_prefix) {
             if let Ok((route, sub_router)) = UserRoute::parse_with_sub(path) {
                 return Ok(Self::User(route));
@@ -246,12 +247,12 @@ impl Router for UserProfile {
 
     fn format(&self) -> String {
         let mut path = format!("/users/{}/profile", self.id.to_param());
-        
+
         // 添加子路由路径
         if let Some(sub) = &self.sub_router {
             path.push_str(&sub.format());
         }
-        
+
         // 添加查询参数
         let query = self.options.format();
         if !query.is_empty() {
@@ -287,7 +288,7 @@ enum AppRouterMatch {
 impl RouteMatcher for AppRouterMatch {
     fn try_parse(path: &str) -> Result<Self, ParseError> {
         // 自动从每个变体的 Router::pattern() 提取前缀
-        
+
         // 尝试匹配 UserRoute
         let user_prefix = <UserRoute as Router>::pattern(); // 例如: "/users"
         if path.starts_with(user_prefix) {
@@ -295,7 +296,7 @@ impl RouteMatcher for AppRouterMatch {
                 return Ok(Self::User(route));
             }
         }
-        
+
         // 尝试匹配 BlogRoute
         let blog_prefix = <BlogRoute as Router>::pattern(); // 例如: "/blog"
         if path.starts_with(blog_prefix) {
@@ -303,7 +304,7 @@ impl RouteMatcher for AppRouterMatch {
                 return Ok(Self::Blog(route));
             }
         }
-        
+
         // 尝试匹配 ApiRoute
         let api_prefix = <ApiRoute as Router>::pattern(); // 例如: "/api"
         if path.starts_with(api_prefix) {
@@ -311,13 +312,13 @@ impl RouteMatcher for AppRouterMatch {
                 return Ok(Self::Api(route));
             }
         }
-        
+
         Err(ParseError::InvalidPath("No matching route found".to_string()))
     }
-    
+
     fn try_parse_with_remaining(path: &str) -> Result<(Self, Option<String>), ParseError> {
         // 尝试匹配并返回剩余路径
-        
+
         // 尝试匹配 UserRoute
         let user_prefix = <UserRoute as Router>::pattern();
         if path.starts_with(user_prefix) {
@@ -325,12 +326,12 @@ impl RouteMatcher for AppRouterMatch {
                 return Ok((Self::User(route), remaining));
             }
         }
-        
+
         // 类似地处理其他路由...
-        
+
         Err(ParseError::InvalidPath("No matching route found".to_string()))
     }
-    
+
     fn format(&self) -> String {
         match self {
             Self::User(route) => route.format(),
@@ -338,7 +339,7 @@ impl RouteMatcher for AppRouterMatch {
             Self::Api(route) => route.format(),
         }
     }
-    
+
     fn patterns() -> Vec<&'static str> {
         vec![
             <UserRoute as Router>::pattern(),
@@ -375,7 +376,7 @@ use ruled_router::error::RouteState;
 #[derive(RouterMatch)]
 enum AppRouterMatch {
     User(ModuleRoute),    // 自动提取前缀: "/user"
-    Shop(ModuleRoute),    // 自动提取前缀: "/shop" 
+    Shop(ModuleRoute),    // 自动提取前缀: "/shop"
     Admin(ModuleRoute),   // 自动提取前缀: "/admin"
 }
 
@@ -485,13 +486,13 @@ fn main() {
         match route {
             AppRouterMatch::User(module_route) => {
                 println!("模块: {}", module_route.module);
-                
+
                 match module_route.sub_router {
                     RouteState::SubRoute(sub) => {
                         match sub {
                             SubRouterMatch::User(category_route) => {
                                 println!("分类ID: {}", category_route.category_id);
-                                
+
                                 match category_route.sub_router {
                                     RouteState::SubRoute(detail) => {
                                         match detail {
@@ -527,7 +528,7 @@ fn main() {
                 SubRouterMatch::User(
                     CategoryRoute {
                         category_id: 123,
-                        query: SimpleQuery { 
+                        query: SimpleQuery {
                             format: Some("json".to_string()),
                             page: 2,
                         },
@@ -595,28 +596,28 @@ struct CategoryQuery {
 impl Query for CategoryQuery {
     fn parse(query: &str) -> Result<Self, ParseError> {
         let params = parse_query_string(query)?;
-        
+
         let page = params.get("page")
             .and_then(|v| v.first())
             .map(|s| u32::from_param(s))
             .transpose()?
             .unwrap_or(1);
-            
+
         let limit = params.get("limit")
             .and_then(|v| v.first())
             .map(|s| u32::from_param(s))
             .transpose()?
             .unwrap_or(10);
-            
+
         let sort = params.get("sort")
             .and_then(|v| v.first())
             .map(|s| String::from_param(s))
             .transpose()?;
-            
+
         let filters = params.get("filter")
             .map(|v| v.iter().map(|s| s.clone()).collect())
             .unwrap_or_default();
-            
+
         Ok(CategoryQuery {
             page,
             limit,
@@ -624,26 +625,26 @@ impl Query for CategoryQuery {
             filters,
         })
     }
-    
+
     fn format(&self) -> String {
         let mut parts = Vec::new();
-        
+
         if self.page != 1 {
             parts.push(format!("page={}", self.page.to_param()));
         }
-        
+
         if self.limit != 10 {
             parts.push(format!("limit={}", self.limit.to_param()));
         }
-        
+
         if let Some(sort) = &self.sort {
             parts.push(format!("sort={}", sort.to_param()));
         }
-        
+
         for filter in &self.filters {
             parts.push(format!("filter={}", filter.to_param()));
         }
-        
+
         parts.join("&")
     }
 }

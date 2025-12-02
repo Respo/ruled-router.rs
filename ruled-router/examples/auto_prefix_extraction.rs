@@ -4,14 +4,14 @@ use ruled_router::RouteMatcher;
 use ruled_router_derive::RouterMatch;
 
 // Route matcher - automatic prefix extraction, no need to repeat path definitions
-#[derive(Debug, Clone, RouterMatch)]
+#[derive(Debug, RouterMatch)]
 enum AppRouterMatch {
   Users(UsersModuleRoute), // Auto-extracted prefix: "/users"
   Blog(BlogModuleRoute),   // Auto-extracted prefix: "/blog"
   Api(ApiModuleRoute),     // Auto-extracted prefix: "/api"
 }
 
-#[derive(Debug, Clone, RouterData)]
+#[derive(Debug, RouterData)]
 #[router(pattern = "/users")]
 struct UsersModuleRoute {
   #[sub_router]
