@@ -50,25 +50,36 @@ fn generate_try_parse_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
       quote! {
         {
           let prefix = #prefix_expr;
-          if path.starts_with(prefix) {
-            // 分离路径和查询参数
-            let (path_part, query_part) = ::ruled_router::utils::split_path_query(path);
+          // 分离路径和查询参数
+          let (path_part, query_part) = ::ruled_router::utils::split_path_query(path);
 
-            if path_part.starts_with(prefix) {
-              // 构造完整的路径用于解析（前缀 + 查询参数）
+          // 使用 PathParser 来检查路径是否匹配该路由的 pattern
+          // 对于固定前缀（如 "/users"），使用 starts_with 检查
+          // 对于带参数的 pattern（如 "/:id"），尝试直接解析
+          let is_fixed_prefix = !prefix.contains(':') && !prefix.contains('{');
+
+          let should_try_parse = if is_fixed_prefix {
+            // 固定前缀，使用 starts_with 检查
+            path_part.starts_with(prefix)
+          } else {
+            // 带参数的 pattern，总是尝试解析
+            true
+          };
+
+          if should_try_parse {
+            // 尝试使用 parse_with_sub 进行递归解析
+            if let Ok((route, sub_router_state)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(path) {
+              // 无论是否有子路由，都直接返回解析结果
+              // 子路由信息已经包含在 parse_with_sub 的结果中
+              return Ok(Self::#variant_name(route));
+            }
+            // 如果递归解析失败且是固定前缀，回退到普通解析
+            if is_fixed_prefix {
               let full_path = if let Some(query) = query_part {
                 format!("{}?{}", prefix, query)
               } else {
                 prefix.to_string()
               };
-
-              // 尝试使用 parse_with_sub 进行递归解析
-              if let Ok((route, sub_router_state)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(path) {
-                // 无论是否有子路由，都直接返回解析结果
-                // 子路由信息已经包含在 parse_with_sub 的结果中
-                return Ok(Self::#variant_name(route));
-              }
-              // 如果递归解析失败，回退到普通解析
               if let Ok(route) = <#route_type as ::ruled_router::traits::RouterData>::parse(&full_path) {
                 return Ok(Self::#variant_name(route));
               }

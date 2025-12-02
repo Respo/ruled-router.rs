@@ -4,26 +4,26 @@ use ruled_router::RouteMatcher;
 use ruled_router_derive::{QueryDerive, RouterData, RouterMatch};
 
 // Simple two-level nested routing example
-#[derive(Debug, RouterMatch)]
+#[derive(Debug, Clone, RouterMatch)]
 enum AppRouterMatch {
   User(UserModuleRoute),
   Blog(BlogModuleRoute),
 }
 
-#[derive(Debug, RouterData)]
+#[derive(Debug, Clone, RouterData)]
 #[router(pattern = "/user")]
 struct UserModuleRoute {
   #[sub_router]
   sub_router: RouteState<UserSubRouterMatch>,
 }
 
-#[derive(Debug, RouterMatch)]
+#[derive(Debug, Clone, RouterMatch)]
 enum UserSubRouterMatch {
   Profile(UserProfileRoute),
   Settings(UserSettingsRoute),
 }
 
-#[derive(Debug, RouterData)]
+#[derive(Debug, Clone, RouterData)]
 #[router(pattern = "/profile/:id")]
 struct UserProfileRoute {
   id: u32,
@@ -31,26 +31,26 @@ struct UserProfileRoute {
   query: UserQuery,
 }
 
-#[derive(Debug, RouterData)]
+#[derive(Debug, Clone, RouterData)]
 #[router(pattern = "/settings")]
 struct UserSettingsRoute {
   #[query]
   query: UserQuery,
 }
 
-#[derive(Debug, RouterData)]
+#[derive(Debug, Clone, RouterData)]
 #[router(pattern = "/blog")]
 struct BlogModuleRoute {
   #[sub_router]
   sub_router: RouteState<BlogSubRouterMatch>,
 }
 
-#[derive(Debug, RouterMatch)]
+#[derive(Debug, Clone, RouterMatch)]
 enum BlogSubRouterMatch {
   Post(BlogPostRoute),
 }
 
-#[derive(Debug, RouterData)]
+#[derive(Debug, Clone, RouterData)]
 #[router(pattern = "/post/:slug")]
 struct BlogPostRoute {
   slug: String,
@@ -58,13 +58,13 @@ struct BlogPostRoute {
   query: BlogQuery,
 }
 
-#[derive(Debug, QueryDerive)]
+#[derive(Debug, Clone, QueryDerive)]
 struct UserQuery {
   #[query(name = "tab")]
   tab: Option<String>,
 }
 
-#[derive(Debug, QueryDerive)]
+#[derive(Debug, QueryDerive, Clone)]
 struct BlogQuery {
   #[query(name = "format")]
   format: Option<String>,

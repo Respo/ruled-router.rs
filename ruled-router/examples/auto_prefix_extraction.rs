@@ -4,62 +4,62 @@ use ruled_router::RouteMatcher;
 use ruled_router_derive::RouterMatch;
 
 // Route matcher - automatic prefix extraction, no need to repeat path definitions
-#[derive(Debug, RouterMatch)]
+#[derive(Debug, Clone, RouterMatch)]
 enum AppRouterMatch {
   Users(UsersModuleRoute), // Auto-extracted prefix: "/users"
   Blog(BlogModuleRoute),   // Auto-extracted prefix: "/blog"
   Api(ApiModuleRoute),     // Auto-extracted prefix: "/api"
 }
 
-#[derive(Debug, RouterData)]
+#[derive(Debug, Clone, RouterData)]
 #[router(pattern = "/users")]
 struct UsersModuleRoute {
   #[sub_router]
   sub_router: RouteState<UserSubRouterMatch>,
 }
 
-#[derive(Debug, RouterMatch)]
+#[derive(Debug, Clone, RouterMatch)]
 enum UserSubRouterMatch {
   Detail(UserDetailRoute),
 }
 
-#[derive(Debug, RouterData)]
+#[derive(Debug, Clone, RouterData)]
 #[router(pattern = "/:id")]
 struct UserDetailRoute {
   id: u32,
 }
 
-#[derive(Debug, RouterData)]
+#[derive(Debug, Clone, RouterData)]
 #[router(pattern = "/blog")]
 struct BlogModuleRoute {
   #[sub_router]
   sub_router: RouteState<BlogSubRouterMatch>,
 }
 
-#[derive(Debug, RouterMatch)]
+#[derive(Debug, Clone, RouterMatch)]
 enum BlogSubRouterMatch {
   Post(BlogPostRoute),
 }
 
-#[derive(Debug, RouterData)]
+#[derive(Debug, Clone, RouterData)]
 #[router(pattern = "/:slug")]
 struct BlogPostRoute {
   slug: String,
 }
 
-#[derive(Debug, RouterData)]
+#[derive(Debug, Clone, RouterData)]
 #[router(pattern = "/api")]
 struct ApiModuleRoute {
   #[sub_router]
   sub_router: RouteState<ApiSubRouterMatch>,
 }
 
-#[derive(Debug, RouterMatch)]
+#[derive(Debug, Clone, RouterMatch)]
 enum ApiSubRouterMatch {
   V1(ApiV1Route),
 }
 
-#[derive(Debug, RouterData)]
+#[derive(Debug, Clone, RouterData)]
 #[router(pattern = "/v1")]
 struct ApiV1Route {
   // Empty route with no parameters

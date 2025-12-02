@@ -321,6 +321,75 @@ fn generate_parse_sub_router_field(fields: &[RouteField]) -> TokenStream {
   quote! {}
 }
 
+/// 查找子路由字段的名称
+fn find_sub_router_field_name(fields: &[RouteField]) -> Option<syn::Ident> {
+  for (field_name, _, _, is_sub_router) in fields {
+    if *is_sub_router {
+      return Some(field_name.clone());
+    }
+  }
+  None
+}
+
+/// 生成子路由字段使用已解析的 sub_router_state 进行初始化的代码
+fn generate_parse_sub_router_field_with_state(fields: &[RouteField]) -> TokenStream {
+  for (field_name, field_type, _, is_sub_router) in fields {
+    if *is_sub_router {
+      // 检查字段类型是 Option 还是 RouteState
+      if let Type::Path(type_path) = field_type {
+        if let Some(segment) = type_path.path.segments.last() {
+          if segment.ident == "Option" {
+            // 对于 Option 类型，将 RouteState 转换为 Option
+            return quote! {
+              #field_name: sub_router_state.into_option(),
+            };
+          } else if segment.ident == "RouteState" {
+            // 对于 RouteState 类型，直接移动 sub_router_state
+            return quote! {
+              #field_name: sub_router_state,
+            };
+          }
+        }
+      }
+      // 默认情况，假设是 RouteState
+      return quote! {
+        #field_name: sub_router_state,
+      };
+    }
+  }
+  quote! {}
+}
+
+/// 生成从 router 获取 sub_router 状态的代码（用于 parse_with_sub 的返回值）
+fn generate_get_sub_router_state(fields: &[RouteField]) -> TokenStream {
+  for (field_name, field_type, _, is_sub_router) in fields {
+    if *is_sub_router {
+      // 检查字段类型是 Option 还是 RouteState
+      if let Type::Path(type_path) = field_type {
+        if let Some(segment) = type_path.path.segments.last() {
+          if segment.ident == "Option" {
+            // 对于 Option 类型，从 Option 转换为 RouteState
+            return quote! {
+              RouteState::from_option(router.#field_name.clone())
+            };
+          } else if segment.ident == "RouteState" {
+            // 对于 RouteState 类型，直接克隆
+            return quote! {
+              router.#field_name.clone()
+            };
+          }
+        }
+      }
+      // 默认情况，假设是 RouteState
+      return quote! {
+        router.#field_name.clone()
+      };
+    }
+  }
+  // 如果没有子路由字段，返回 NoSubRoute
+  quote! { RouteState::no_sub_route() }
+}
+
 /// Expand the Router derive macro
 pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
   let struct_name = &input.ident;
@@ -335,11 +404,14 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
 
   // 查找子路由字段
   let sub_router_type = find_sub_router_type(&fields);
+  let _sub_router_field_name = find_sub_router_field_name(&fields);
 
   // 生成解析逻辑
   let parse_path_fields = generate_parse_path_fields(&path_fields, &param_names)?;
   let parse_query_fields = generate_parse_query_fields(&query_fields);
   let parse_sub_router_field = generate_parse_sub_router_field(&fields);
+  let parse_sub_router_field_with_state = generate_parse_sub_router_field_with_state(&fields);
+  let get_sub_router_state = generate_get_sub_router_state(&fields);
 
   // 生成格式化逻辑
   let format_path_fields = generate_format_path_fields(&path_fields);
@@ -399,18 +471,12 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
                   ::std::collections::HashMap::new()
               };
 
-              let router = Self {
-                  #(#parse_path_fields,)*
-                  #(#parse_query_fields,)*
-                  #parse_sub_router_field
-              };
-
               // 尝试解析子路由
               let remaining_path = &path[consumed..];
               let sub_router_state = if !remaining_path.is_empty() {
                   match Self::SubRouterMatch::try_parse(remaining_path) {
                       Ok(sub_match) => RouteState::sub_route(sub_match),
-                      Err(parse_error) => {
+                      Err(_parse_error) => {
                           RouteState::parse_failed(
                               remaining_path.to_string(),
                               vec![], // TODO: 可以在后续版本中添加更详细的路由信息
@@ -422,7 +488,16 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
                   RouteState::no_sub_route()
               };
 
-              Ok((router, sub_router_state))
+              // 创建 router，将解析出的 sub_router_state 设置到字段中
+              let router = Self {
+                  #(#parse_path_fields,)*
+                  #(#parse_query_fields,)*
+                  #parse_sub_router_field_with_state
+              };
+
+              // 从 router 中获取子路由状态作为返回值
+              let return_sub_router_state = #get_sub_router_state;
+              Ok((router, return_sub_router_state))
           }
 
           fn format(&self) -> String {

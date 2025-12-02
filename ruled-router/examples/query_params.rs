@@ -9,7 +9,7 @@ struct SearchRoute {
   query: ListQuery,
 }
 
-#[derive(Debug, QueryDerive)]
+#[derive(Debug, Clone, QueryDerive)]
 struct ListQuery {
   #[query(name = "page", default = "1")]
   page: u32,

@@ -2,13 +2,13 @@ use ruled_router::error::RouteState;
 use ruled_router::prelude::*;
 use ruled_router_derive::{QueryDerive, RouterData, RouterMatch};
 
-#[derive(Debug, QueryDerive, PartialEq)]
+#[derive(Debug, QueryDerive, PartialEq, Clone)]
 struct TestQuery {
   #[query(name = "tab")]
   tab: Option<String>,
 }
 
-#[derive(Debug, RouterData)]
+#[derive(Debug, Clone, RouterData)]
 #[router(pattern = "/user/:id")]
 struct UserRoute {
   id: u32,
@@ -18,20 +18,20 @@ struct UserRoute {
   sub_router: RouteState<UserSubRouterMatch>,
 }
 
-#[derive(Debug, RouterMatch)]
+#[derive(Debug, Clone, RouterMatch)]
 enum UserSubRouterMatch {
   Profile(ProfileRoute),
   Settings(SettingsRoute),
 }
 
-#[derive(Debug, RouterData)]
+#[derive(Debug, Clone, RouterData)]
 #[router(pattern = "/profile")]
 struct ProfileRoute {
   #[query]
   query: TestQuery,
 }
 
-#[derive(Debug, RouterData)]
+#[derive(Debug, Clone, RouterData)]
 #[router(pattern = "/settings")]
 struct SettingsRoute {
   #[query]
