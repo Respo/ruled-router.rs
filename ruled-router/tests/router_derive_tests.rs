@@ -183,6 +183,25 @@ mod tests {
   }
 
   #[test]
+  fn test_module_route_query_only_should_not_be_sub_router() {
+    // 回归测试：当路径完全匹配且只有查询参数时，sub_router 应该是 NoSubRoute
+    // 而不是把查询字符串 ?page=0 当作剩余路径传给子路由解析
+    let (route, sub_state) = ModuleRoute::parse_with_sub("/modules/counter?version=v1").unwrap();
+    assert_eq!(route.name, "counter");
+    assert_eq!(route.options.version, Some("v1".to_string()));
+    // 关键断言：sub_router 应该是 NoSubRoute，而不是 ParseFailed
+    assert!(
+      sub_state.is_no_sub_route(),
+      "Expected NoSubRoute when only query params remain, got: {:?}",
+      sub_state
+    );
+    assert!(
+      route.sub_router.is_no_sub_route(),
+      "Route's sub_router field should also be NoSubRoute"
+    );
+  }
+
+  #[test]
   fn test_empty_query_params() {
     // 测试没有查询参数的情况
     let route = SearchRoute::parse_route("/search/books").unwrap();

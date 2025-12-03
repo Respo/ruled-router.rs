@@ -473,7 +473,10 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
 
               // 尝试解析子路由
               let remaining_path = &path[consumed..];
-              let sub_router_state = if !remaining_path.is_empty() {
+              // 如果剩余路径为空或只有查询参数（以 ? 开头），则不需要解析子路由
+              let sub_router_state = if remaining_path.is_empty() || remaining_path.starts_with('?') {
+                  RouteState::no_sub_route()
+              } else {
                   match Self::SubRouterMatch::try_parse(remaining_path) {
                       Ok(sub_match) => RouteState::sub_route(sub_match),
                       Err(_parse_error) => {
@@ -484,8 +487,6 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
                           )
                       }
                   }
-              } else {
-                  RouteState::no_sub_route()
               };
 
               // 创建 router，将解析出的 sub_router_state 设置到字段中
