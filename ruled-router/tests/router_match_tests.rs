@@ -33,7 +33,9 @@ struct ProductQuery {
 #[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/users/:id")]
 struct UserRoute {
+  /// 测试用户 ID 字段文档
   id: u32,
+  /// 测试查询字段文档
   #[query]
   query: UserQuery,
 }
@@ -70,6 +72,7 @@ struct ApiRoute {
 /// 简单的应用路由匹配器
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum AppRouterMatch {
+  /// 用户路由枚举变体文档
   User(UserRoute),
   Product(ProductRoute),
   Settings(SettingsRoute),
@@ -328,6 +331,11 @@ mod tests {
     assert!(debug_output.contains("/users/123"));
     assert!(debug_output.contains("page=1"));
     assert!(debug_output.contains("limit=20"));
+    assert!(debug_output.contains("简单的应用路由匹配器"));
+    assert!(debug_output.contains("简单的用户路由"));
+    assert!(debug_output.contains("Variant Doc: 用户路由枚举变体文档"));
+    assert!(debug_output.contains("Field id: 测试用户 ID 字段文档"));
+    assert!(debug_output.contains("Field query: 测试查询字段文档"));
   }
 
   #[test]

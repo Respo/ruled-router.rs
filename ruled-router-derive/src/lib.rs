@@ -4,7 +4,8 @@
 //! the RouterData and Query traits.
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, Data, DeriveInput, Fields, Lit, Meta};
+use proc_macro2::Span;
+use syn::{parse_macro_input, Attribute, Data, DeriveInput, Expr, Fields, Lit, LitStr, Meta};
 
 mod query;
 mod querystring;
@@ -174,6 +175,51 @@ fn extract_route_config(input: &DeriveInput) -> syn::Result<(String, Option<Stri
     }
   }
   Err(syn::Error::new_spanned(input, "Missing #[router(pattern = \"...\")]"))
+}
+
+pub(crate) fn extract_doc_comment(attrs: &[Attribute]) -> Option<String> {
+  let mut docs = Vec::new();
+
+  for attr in attrs {
+    if attr.path().is_ident("doc") {
+      match &attr.meta {
+        Meta::NameValue(name_value) => {
+          if let Expr::Lit(expr_lit) = &name_value.value {
+            if let Lit::Str(lit_str) = &expr_lit.lit {
+              docs.push(lit_str.value());
+            }
+          }
+        }
+        _ => {
+          if let Ok(lit_str) = attr.parse_args::<LitStr>() {
+            docs.push(lit_str.value());
+          }
+        }
+      }
+    }
+  }
+
+  if docs.is_empty() {
+    return None;
+  }
+
+  let combined = docs.join("\n");
+  let trimmed = combined.trim();
+  if trimmed.is_empty() {
+    None
+  } else {
+    Some(trimmed.to_string())
+  }
+}
+
+pub(crate) fn doc_comment_tokens(doc: Option<String>) -> proc_macro2::TokenStream {
+  match doc {
+    Some(text) => {
+      let lit = LitStr::new(&text, Span::call_site());
+      quote::quote! { Some(#lit) }
+    }
+    None => quote::quote! { None },
+  }
 }
 
 /// Extract field information from struct

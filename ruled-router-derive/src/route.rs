@@ -4,7 +4,16 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Data, DeriveInput, Fields, Type};
 
-use crate::extract_route_config;
+use crate::{doc_comment_tokens, extract_doc_comment, extract_route_config};
+
+#[derive(Clone)]
+struct RouteFieldMeta {
+  ident: syn::Ident,
+  ty: Type,
+  is_query: bool,
+  is_sub_router: bool,
+  doc: Option<String>,
+}
 
 /// 从路径模式中提取参数名
 fn extract_path_params(pattern: &str) -> Vec<String> {
@@ -26,7 +35,7 @@ fn extract_path_params(pattern: &str) -> Vec<String> {
 
 /// 分离路径字段和查询字段
 /// 提取字段信息（包括属性）
-fn extract_route_fields(data: &Data) -> syn::Result<Vec<(syn::Ident, Type, bool, bool)>> {
+fn extract_route_fields(data: &Data) -> syn::Result<Vec<RouteFieldMeta>> {
   match data {
     Data::Struct(data_struct) => match &data_struct.fields {
       Fields::Named(fields_named) => {
@@ -35,7 +44,13 @@ fn extract_route_fields(data: &Data) -> syn::Result<Vec<(syn::Ident, Type, bool,
           if let Some(ident) = &field.ident {
             let is_query = has_query_attribute(field);
             let is_sub_router = has_sub_router_attribute(field);
-            field_info.push((ident.clone(), field.ty.clone(), is_query, is_sub_router));
+            field_info.push(RouteFieldMeta {
+              ident: ident.clone(),
+              ty: field.ty.clone(),
+              is_query,
+              is_sub_router,
+              doc: extract_doc_comment(&field.attrs),
+            });
           }
         }
         Ok(field_info)
@@ -67,23 +82,25 @@ fn has_sub_router_attribute(field: &syn::Field) -> bool {
 }
 
 // Define type aliases to improve readability and reduce complexity
-type RouteField = (syn::Ident, Type, bool, bool);
+type RouteField = RouteFieldMeta;
 type ParsedField = (syn::Ident, Type);
 
 fn separate_fields(fields: &[RouteField], param_names: &[String]) -> (Vec<ParsedField>, Vec<ParsedField>) {
   let mut path_fields = Vec::new();
   let mut query_fields = Vec::new();
 
-  for (field_name, field_type, is_query, is_sub_router) in fields {
+  for field in fields {
+    let field_name = &field.ident;
+    let field_type = &field.ty;
     let field_name_str = field_name.to_string();
 
-    if *is_query {
+    if field.is_query {
       // 这是查询字段（有 #[query] 属性）
       query_fields.push((field_name.clone(), field_type.clone()));
     } else if param_names.contains(&field_name_str) {
       // 这是路径参数
       path_fields.push((field_name.clone(), field_type.clone()));
-    } else if *is_sub_router {
+    } else if field.is_sub_router {
       // 忽略子路由字段，它们由 RouterMatch trait 处理
     }
     // 忽略其他字段
@@ -147,8 +164,10 @@ fn generate_format_path_fields(fields: &[(syn::Ident, Type)]) -> Vec<TokenStream
 /// 生成格式化子路由逻辑的代码
 fn generate_format_sub_router_logic(fields: &[RouteField]) -> TokenStream {
   // 查找有 #[sub_router] 属性的字段
-  for (field_name, field_type, _, is_sub_router) in fields {
-    if *is_sub_router {
+  for field in fields {
+    if field.is_sub_router {
+      let field_name = &field.ident;
+      let field_type = &field.ty;
       // 检查字段类型是 Option 还是 RouteState
       if let Type::Path(type_path) = field_type {
         if let Some(segment) = type_path.path.segments.last() {
@@ -228,8 +247,9 @@ fn generate_format_sub_router_logic(fields: &[RouteField]) -> TokenStream {
 
 /// 生成查询参数字段名称的实现
 fn generate_query_keys_impl(fields: &[RouteField]) -> Vec<TokenStream> {
-  for (_field_name, field_type, is_query, _) in fields {
-    if *is_query {
+  for field in fields {
+    if field.is_query {
+      let field_type = &field.ty;
       return vec![quote! {
         <#field_type as ::ruled_router::traits::Query>::query_keys()
       }];
@@ -259,8 +279,9 @@ fn generate_format_query_logic(fields: &[(syn::Ident, Type)]) -> TokenStream {
 /// 查找子路由字段的类型
 fn find_sub_router_type(fields: &[RouteField]) -> TokenStream {
   // 首先检查是否有 #[sub_router] 字段
-  for (_field_name, field_type, _, is_sub_router) in fields {
-    if *is_sub_router {
+  for field in fields {
+    if field.is_sub_router {
+      let field_type = &field.ty;
       // 如果有子路由字段，从字段类型中提取内部类型
       if let Type::Path(type_path) = field_type {
         if let Some(segment) = type_path.path.segments.last() {
@@ -294,8 +315,10 @@ fn find_sub_router_type(fields: &[RouteField]) -> TokenStream {
 
 /// 生成子路由字段的解析代码
 fn generate_parse_sub_router_field(fields: &[RouteField]) -> TokenStream {
-  for (field_name, field_type, _, is_sub_router) in fields {
-    if *is_sub_router {
+  for field in fields {
+    if field.is_sub_router {
+      let field_name = &field.ident;
+      let field_type = &field.ty;
       // 检查字段类型是 Option 还是 RouteState
       if let Type::Path(type_path) = field_type {
         if let Some(segment) = type_path.path.segments.last() {
@@ -323,9 +346,9 @@ fn generate_parse_sub_router_field(fields: &[RouteField]) -> TokenStream {
 
 /// 查找子路由字段的名称
 fn find_sub_router_field_name(fields: &[RouteField]) -> Option<syn::Ident> {
-  for (field_name, _, _, is_sub_router) in fields {
-    if *is_sub_router {
-      return Some(field_name.clone());
+  for field in fields {
+    if field.is_sub_router {
+      return Some(field.ident.clone());
     }
   }
   None
@@ -333,8 +356,10 @@ fn find_sub_router_field_name(fields: &[RouteField]) -> Option<syn::Ident> {
 
 /// 生成子路由字段使用已解析的 sub_router_state 进行初始化的代码
 fn generate_parse_sub_router_field_with_state(fields: &[RouteField]) -> TokenStream {
-  for (field_name, field_type, _, is_sub_router) in fields {
-    if *is_sub_router {
+  for field in fields {
+    if field.is_sub_router {
+      let field_name = &field.ident;
+      let field_type = &field.ty;
       // 检查字段类型是 Option 还是 RouteState
       if let Type::Path(type_path) = field_type {
         if let Some(segment) = type_path.path.segments.last() {
@@ -362,8 +387,10 @@ fn generate_parse_sub_router_field_with_state(fields: &[RouteField]) -> TokenStr
 
 /// 生成从 router 获取 sub_router 状态的代码（用于 parse_with_sub 的返回值）
 fn generate_get_sub_router_state(fields: &[RouteField]) -> TokenStream {
-  for (field_name, field_type, _, is_sub_router) in fields {
-    if *is_sub_router {
+  for field in fields {
+    if field.is_sub_router {
+      let field_name = &field.ident;
+      let field_type = &field.ty;
       // 检查字段类型是 Option 还是 RouteState
       if let Type::Path(type_path) = field_type {
         if let Some(segment) = type_path.path.segments.last() {
@@ -390,10 +417,28 @@ fn generate_get_sub_router_state(fields: &[RouteField]) -> TokenStream {
   quote! { RouteState::no_sub_route() }
 }
 
+fn generate_field_doc_entries(fields: &[RouteField]) -> Vec<TokenStream> {
+  let mut entries = Vec::new();
+  for field in fields {
+    if field.doc.is_some() {
+      let field_name = field.ident.to_string();
+      let doc_expr = doc_comment_tokens(field.doc.clone());
+      entries.push(quote! {
+        ::ruled_router::traits::RouteFieldDoc {
+          name: #field_name,
+          description: #doc_expr,
+        }
+      });
+    }
+  }
+  entries
+}
+
 /// Expand the Router derive macro
 pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
   let struct_name = &input.ident;
   let (pattern, _query_type) = extract_route_config(&input)?;
+  let doc_expr = doc_comment_tokens(extract_doc_comment(&input.attrs));
   let fields = extract_route_fields(&input.data)?;
 
   // 分析路径模式，提取参数名
@@ -418,6 +463,7 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
   let format_query_logic = generate_format_query_logic(&query_fields);
   let format_sub_router_logic = generate_format_sub_router_logic(&fields);
   let query_keys_impl = generate_query_keys_impl(&fields);
+  let field_doc_entries = generate_field_doc_entries(&fields);
 
   let expanded = quote! {
       const _: () = {
@@ -533,10 +579,15 @@ pub fn expand_route_derive(input: DeriveInput) -> syn::Result<TokenStream> {
               fn to_route_info(&self) -> ::ruled_router::traits::RouteInfo {
                   // 对于没有子路由的情况，直接返回 None
                   let sub_route_info = None;
+                let field_docs = vec![
+                  #(#field_doc_entries,)*
+                ];
 
                   ::ruled_router::traits::RouteInfo {
                       pattern: Self::pattern(),
                       formatted: self.format(),
+                      description: #doc_expr,
+                  field_docs,
                       sub_route_info,
                   }
               }

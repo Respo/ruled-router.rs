@@ -4,6 +4,8 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Data, DeriveInput, Fields, Variant};
 
+use crate::{doc_comment_tokens, extract_doc_comment};
+
 /// 提取枚举变体信息
 fn extract_enum_variants(data: &Data) -> syn::Result<Vec<&Variant>> {
   match data {
@@ -91,11 +93,11 @@ fn generate_try_parse_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
       // 这个分支现在不会被执行，因为我们总是返回 Some
       quote! {
         // 尝试使用 parse_with_sub 进行递归解析
-          if let Ok((route, sub_router_state)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(path) {
-            // 无论是否有子路由，都直接返回解析结果
-            // 子路由信息已经包含在 parse_with_sub 的结果中
-            return Ok(Self::#variant_name(route));
-          }
+        if let Ok((route, sub_router_state)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(path) {
+          // 无论是否有子路由，都直接返回解析结果
+          // 子路由信息已经包含在 parse_with_sub 的结果中
+          return Ok(Self::#variant_name(route));
+        }
         // 如果递归解析失败，回退到普通解析
         if let Ok(route) = <#route_type as ::ruled_router::traits::RouterData>::parse_route(path) {
           return Ok(Self::#variant_name(route));
@@ -139,7 +141,6 @@ fn generate_format_impl(variants: &[&Variant]) -> TokenStream {
 
 /// 生成 patterns 方法的实现
 /// 这个实现假设所有变体都实现了 Router trait
-/// 生成 patterns 方法的实现
 fn generate_patterns_impl(variants: &[&Variant]) -> syn::Result<TokenStream> {
   let mut pattern_calls = Vec::new();
 
@@ -270,11 +271,9 @@ fn generate_to_route_info_impl(variants: &[&Variant]) -> syn::Result<TokenStream
           None
         };
 
-        ::ruled_router::traits::RouteInfo {
-          pattern: <#route_type as ::ruled_router::traits::RouterData>::pattern(),
-          formatted: route.format(),
-          sub_route_info,
-        }
+        let mut info = <#route_type as ::ruled_router::traits::ToRouteInfo>::to_route_info(route);
+        info.sub_route_info = sub_route_info;
+        info
       }
     };
     match_arms.push(match_arm);
@@ -292,28 +291,77 @@ fn generate_to_route_info_impl(variants: &[&Variant]) -> syn::Result<TokenStream
 }
 
 /// 生成 debug_format 方法的实现
-fn generate_debug_format_impl(input: &DeriveInput, variants: &[&Variant]) -> syn::Result<TokenStream> {
+fn generate_debug_format_impl(input: &DeriveInput, variants: &[&Variant], enum_doc_expr: TokenStream) -> syn::Result<TokenStream> {
   let enum_name = &input.ident;
   let mut match_arms = Vec::new();
 
   for variant in variants {
     let variant_name = &variant.ident;
     let route_type = extract_route_type(variant)?;
+    let variant_doc_expr = doc_comment_tokens(extract_doc_comment(&variant.attrs));
 
     let match_arm = quote! {
       Self::#variant_name(route) => {
         let indent_str = "  ".repeat(indent);
         let mut result = format!("{}{}::{}", indent_str, stringify!(#enum_name), stringify!(#variant_name));
+        let variant_doc: Option<&'static str> = #variant_doc_expr;
 
-        // 添加精简的路由信息
-        result.push_str(&format!("\n{}├─ Pattern: {}", indent_str, <#route_type as ::ruled_router::traits::RouterData>::pattern()));
+        if let Some(doc) = match_doc {
+          for (idx, line) in doc.lines().enumerate() {
+            if idx == 0 {
+              result.push_str(&format!("\n{}├─ Doc: {}", indent_str, line));
+            } else {
+              result.push_str(&format!("\n{}│       {}", indent_str, line));
+            }
+          }
+        }
 
-        // 添加格式化的路径
-        let formatted = route.format();
-        result.push_str(&format!("\n{}├─ Formatted: {}", indent_str, formatted));
+        if let Some(doc) = variant_doc {
+          for (idx, line) in doc.lines().enumerate() {
+            if idx == 0 {
+              result.push_str(&format!("\n{}├─ Variant Doc: {}", indent_str, line));
+            } else {
+              result.push_str(&format!("\n{}│                 {}", indent_str, line));
+            }
+          }
+        }
 
-        // 检查是否有查询参数，如果有则显示参数名称
-        if formatted.contains('?') {
+        let ::ruled_router::traits::RouteInfo {
+          pattern,
+          formatted,
+          description: route_doc,
+          field_docs,
+          ..
+        } = <#route_type as ::ruled_router::traits::ToRouteInfo>::to_route_info(route);
+
+        result.push_str(&format!("\n{}├─ Pattern: {}", indent_str, pattern));
+
+        if let Some(doc) = route_doc {
+          for (idx, line) in doc.lines().enumerate() {
+            if idx == 0 {
+              result.push_str(&format!("\n{}├─ Route Doc: {}", indent_str, line));
+            } else {
+              result.push_str(&format!("\n{}│                {}", indent_str, line));
+            }
+          }
+        }
+
+        for field_doc in field_docs {
+          if let Some(description) = field_doc.description {
+            let mut lines = description.lines();
+            if let Some(first) = lines.next() {
+              result.push_str(&format!("\n{}├─ Field {}: {}", indent_str, field_doc.name, first));
+              for line in lines {
+                result.push_str(&format!("\n{}│                 {}", indent_str, line));
+              }
+            }
+          }
+        }
+
+        let formatted_str = formatted.as_str();
+        result.push_str(&format!("\n{}├─ Formatted: {}", indent_str, formatted_str));
+
+        if formatted_str.contains('?') {
           let query_keys = <#route_type as ::ruled_router::traits::RouterData>::query_keys();
           if !query_keys.is_empty() {
             let keys_str = query_keys.join(", ");
@@ -323,8 +371,7 @@ fn generate_debug_format_impl(input: &DeriveInput, variants: &[&Variant]) -> syn
           }
         }
 
-        // 尝试获取子路由信息
-        if let Ok((_, sub_route_state)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(&route.format()) {
+        if let Ok((_, sub_route_state)) = <#route_type as ::ruled_router::traits::RouterData>::parse_with_sub(formatted_str) {
           match sub_route_state {
             ::ruled_router::error::RouteState::SubRoute(sub_match) => {
               // 只有当 SubRouterMatch 不是 NoSubRouter 时才调用 debug_format
@@ -351,6 +398,7 @@ fn generate_debug_format_impl(input: &DeriveInput, variants: &[&Variant]) -> syn
 
   Ok(quote! {
     fn debug_format(&self, indent: usize) -> String {
+      let match_doc: Option<&'static str> = #enum_doc_expr;
       match self {
         #(#match_arms)*
       }
@@ -362,6 +410,7 @@ fn generate_debug_format_impl(input: &DeriveInput, variants: &[&Variant]) -> syn
 pub fn expand_router_match_derive(input: DeriveInput) -> syn::Result<TokenStream> {
   let name = &input.ident;
   let variants = extract_enum_variants(&input.data)?;
+  let enum_doc_expr = doc_comment_tokens(extract_doc_comment(&input.attrs));
 
   // 验证所有变体都包含路由类型
   for variant in &variants {
@@ -373,10 +422,14 @@ pub fn expand_router_match_derive(input: DeriveInput) -> syn::Result<TokenStream
   let patterns_impl = generate_patterns_impl(&variants)?;
   let try_parse_with_remaining_impl = generate_try_parse_with_remaining_impl(&input, &variants)?;
   let to_route_info_impl = generate_to_route_info_impl(&variants)?;
-  let debug_format_impl = generate_debug_format_impl(&input, &variants)?;
+  let debug_format_impl = generate_debug_format_impl(&input, &variants, enum_doc_expr.clone())?;
 
   let expanded = quote! {
     impl ::ruled_router::traits::RouteMatcher for #name {
+      fn doc_comment() -> Option<&'static str> {
+        #enum_doc_expr
+      }
+
       #try_parse_impl
 
       #format_impl
