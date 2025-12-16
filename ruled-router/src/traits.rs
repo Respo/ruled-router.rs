@@ -16,6 +16,15 @@ pub struct NestedRouteResult<T> {
   pub sub_route_info: Option<Box<RouteInfo>>,
 }
 
+/// 字段文档描述信息
+#[derive(Debug, Clone)]
+pub struct RouteFieldDoc {
+  /// 字段名称
+  pub name: &'static str,
+  /// 字段的文档注释
+  pub description: Option<&'static str>,
+}
+
 /// 路由信息的通用表示
 ///
 /// 用于表示任意层级的路由信息，支持递归嵌套
@@ -25,6 +34,10 @@ pub struct RouteInfo {
   pub pattern: &'static str,
   /// 路由的格式化字符串
   pub formatted: String,
+  /// 路由的文档注释描述
+  pub description: Option<&'static str>,
+  /// 字段级文档注释
+  pub field_docs: Vec<RouteFieldDoc>,
   /// 子路由信息（如果存在）
   pub sub_route_info: Option<Box<RouteInfo>>,
 }
@@ -45,6 +58,11 @@ pub trait ToRouteInfo {
 /// - 使用 `#[derive(RouterMatch)]` 为包含多个 RouterData 的 enum 实现此 trait
 /// - 通常用作应用程序的根路由器，管理所有顶层路由
 pub trait RouteMatcher: Sized + ToRouteInfo {
+  /// 获取 RouterMatch 定义的文档注释
+  fn doc_comment() -> Option<&'static str> {
+    None
+  }
+
   /// 尝试从路径解析出匹配的路由
   ///
   /// # 参数
@@ -142,10 +160,43 @@ pub trait RouteMatcher: Sized + ToRouteInfo {
     // 默认实现：显示基本的路由信息
     let indent_str = "  ".repeat(indent);
     let route_info = self.to_route_info();
-    format!(
-      "{}RouterMatch\n{}├─ Pattern: {}\n{}└─ Formatted: {}",
-      indent_str, indent_str, route_info.pattern, indent_str, route_info.formatted
-    )
+    let mut result = format!("{}RouterMatch", indent_str);
+
+    if let Some(doc) = Self::doc_comment() {
+      for (idx, line) in doc.lines().enumerate() {
+        if idx == 0 {
+          result.push_str(&format!("\n{}├─ Doc: {}", indent_str, line));
+        } else {
+          result.push_str(&format!("\n{}│       {}", indent_str, line));
+        }
+      }
+    }
+
+    if let Some(doc) = route_info.description {
+      for (idx, line) in doc.lines().enumerate() {
+        if idx == 0 {
+          result.push_str(&format!("\n{}├─ Route Doc: {}", indent_str, line));
+        } else {
+          result.push_str(&format!("\n{}│                {}", indent_str, line));
+        }
+      }
+    }
+
+    for field_doc in route_info.field_docs {
+      if let Some(description) = field_doc.description {
+        let mut lines = description.lines();
+        if let Some(first) = lines.next() {
+          result.push_str(&format!("\n{}├─ Field {}: {}", indent_str, field_doc.name, first));
+          for line in lines {
+            result.push_str(&format!("\n{}│                 {}", indent_str, line));
+          }
+        }
+      }
+    }
+
+    result.push_str(&format!("\n{}├─ Pattern: {}", indent_str, route_info.pattern));
+    result.push_str(&format!("\n{}└─ Formatted: {}", indent_str, route_info.formatted));
+    result
   }
 }
 
@@ -177,6 +228,8 @@ impl ToRouteInfo for NoSubRouter {
     RouteInfo {
       pattern: "",
       formatted: String::new(),
+      description: None,
+      field_docs: Vec::new(),
       sub_route_info: None,
     }
   }
@@ -215,9 +268,9 @@ pub trait RouterData: Sized {
   /// ```rust,ignore
   /// use ruled_router::RouterData;
   ///
-  /// let route = MyRoute::parse("/user/123?tab=profile")?;
+  /// let route = MyRoute::parse_route("/user/123?tab=profile")?;
   /// ```
-  fn parse(path: &str) -> Result<Self, ParseError>;
+  fn parse_route(path: &str) -> Result<Self, ParseError>;
 
   /// 将路由格式化为路径字符串
   ///
@@ -288,7 +341,7 @@ pub trait RouterData: Sized {
   /// ```
   fn parse_with_sub(path: &str) -> Result<(Self, RouteState<Self::SubRouterMatch>), ParseError> {
     // 默认实现：只解析当前路由，不处理子路由
-    let route = Self::parse(path)?;
+    let route = Self::parse_route(path)?;
     Ok((route, RouteState::NoSubRoute))
   }
 
@@ -333,7 +386,7 @@ pub trait RouterData: Sized {
   /// 当前路由消费的路径长度
   fn consumed_length(path: &str) -> Result<usize, ParseError> {
     // 默认实现：尝试解析并计算消费的长度
-    let _route = Self::parse(path)?;
+    let _route = Self::parse_route(path)?;
     // 这里需要具体的实现来计算实际消费的长度
     // 暂时返回整个路径的长度
     Ok(path.len())

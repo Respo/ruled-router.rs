@@ -31,6 +31,7 @@ struct AdminQuery {
 #[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/basic/:id")]
 struct UserBasicInfoRoute {
+  /// 用户唯一编号
   id: u32,
   #[query]
   query: SimpleQuery,
@@ -75,23 +76,29 @@ struct SystemConfigRoute {
 
 // ===== 第三层：详情路由匹配器 =====
 
+/// Detail router that handles profile leaf routes.
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum UserProfileDetailRouterMatch {
+  /// 个人资料中的基础信息节点
   BasicInfo(UserBasicInfoRoute),
+  /// 个人资料中的设置节点
   Settings(UserSettingsRoute),
 }
 
+/// Detail router that handles content leaf routes.
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum UserContentDetailRouterMatch {
   Post(UserPostRoute),
   Comment(UserCommentRoute),
 }
 
+/// Detail router for user management admin paths.
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum AdminUserDetailRouterMatch {
   Manage(AdminUserManageRoute),
 }
 
+/// Detail router for system configuration admin paths.
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum AdminSystemDetailRouterMatch {
   Config(SystemConfigRoute),
@@ -99,6 +106,7 @@ enum AdminSystemDetailRouterMatch {
 
 // ===== 第二层：分类路由 =====
 
+/// Route data for a user's profile section entry.
 #[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/profile")]
 struct UserProfileCategoryRoute {
@@ -108,6 +116,7 @@ struct UserProfileCategoryRoute {
   sub_router: RouteState<UserProfileDetailRouterMatch>,
 }
 
+/// Route data for user content related detail pages.
 #[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/content")]
 struct UserContentCategoryRoute {
@@ -117,6 +126,7 @@ struct UserContentCategoryRoute {
   sub_router: RouteState<UserContentDetailRouterMatch>,
 }
 
+/// Route data for admin user management category.
 #[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/users")]
 struct AdminUserCategoryRoute {
@@ -126,6 +136,7 @@ struct AdminUserCategoryRoute {
   sub_router: RouteState<AdminUserDetailRouterMatch>,
 }
 
+/// Route data for admin system category.
 #[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/system")]
 struct AdminSystemCategoryRoute {
@@ -137,12 +148,14 @@ struct AdminSystemCategoryRoute {
 
 // ===== 第二层：子路由匹配器 =====
 
+/// Second level router for user-facing categories.
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum UserSubRouterMatch {
   Profile(UserProfileCategoryRoute),
   Content(UserContentCategoryRoute),
 }
 
+/// Second level router for admin sections.
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum AdminSubRouterMatch {
   Users(AdminUserCategoryRoute),
@@ -151,18 +164,22 @@ enum AdminSubRouterMatch {
 
 // ===== 第一层：模块路由 =====
 
+/// Entry route for the user module root.
 #[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/users")]
 struct UserModuleRoute {
+  /// 用户模块的查询参数
   #[query]
   query: SimpleQuery,
   #[sub_router]
   sub_router: RouteState<UserSubRouterMatch>,
 }
 
+/// Entry route for the admin module root.
 #[derive(Debug, Clone, PartialEq, RouterData)]
 #[router(pattern = "/admin")]
 struct AdminModuleRoute {
+  /// 管理模块的查询参数
   #[query]
   query: AdminQuery,
   #[sub_router]
@@ -171,6 +188,7 @@ struct AdminModuleRoute {
 
 // ===== 顶层路由匹配器 =====
 
+/// Root router that stitches together all demo modules.
 #[derive(Debug, Clone, PartialEq, RouterMatch)]
 enum AppRouterMatch {
   User(UserModuleRoute),

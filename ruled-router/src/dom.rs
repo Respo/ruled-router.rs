@@ -48,7 +48,7 @@ impl<T: RouterData + Clone + 'static> DomRouter<T> {
   ///
   /// impl RouterData for MyRoute {
   ///     type SubRouterMatch = NoSubRouter;
-  ///     fn parse(path: &str) -> Result<Self, ParseError> { Ok(MyRoute) }
+  ///     fn parse_route(path: &str) -> Result<Self, ParseError> { Ok(MyRoute) }
   ///     fn format(&self) -> String { "/".to_string() }
   ///     fn pattern() -> &'static str { "/" }
   /// }
@@ -89,7 +89,7 @@ impl<T: RouterData + Clone + 'static> DomRouter<T> {
     let path = self
       .current_path()
       .map_err(|_| ParseError::InvalidPath("无法获取当前路径".to_string()))?;
-    T::parse(&path)
+    T::parse_route(&path)
   }
 
   /// 导航到指定路由
@@ -113,7 +113,7 @@ impl<T: RouterData + Clone + 'static> DomRouter<T> {
   /// # struct MyRoute;
   /// # impl RouterData for MyRoute {
   /// #     type SubRouterMatch = NoSubRouter;
-  /// #     fn parse(path: &str) -> Result<Self, ParseError> { Ok(MyRoute) }
+  /// #     fn parse_route(path: &str) -> Result<Self, ParseError> { Ok(MyRoute) }
   /// #     fn format(&self) -> String { "/".to_string() }
   /// #     fn pattern() -> &'static str { "/" }
   /// # }
@@ -176,7 +176,7 @@ impl<T: RouterData + Clone + 'static> DomRouter<T> {
   /// # struct MyRoute;
   /// # impl RouterData for MyRoute {
   /// #     type SubRouterMatch = NoSubRouter;
-  /// #     fn parse(path: &str) -> Result<Self, ParseError> { Ok(MyRoute) }
+  /// #     fn parse_route(path: &str) -> Result<Self, ParseError> { Ok(MyRoute) }
   /// #     fn format(&self) -> String { "/".to_string() }
   /// #     fn pattern() -> &'static str { "/" }
   /// # }
@@ -209,7 +209,7 @@ impl<T: RouterData + Clone + 'static> DomRouter<T> {
         let location = win.location();
         if let (Ok(pathname), Ok(search)) = (location.pathname(), location.search()) {
           let path = format!("{pathname}{search}");
-          if let Ok(route) = T::parse(&path) {
+          if let Ok(route) = T::parse_route(&path) {
             // 调用所有监听器
             for listener in listeners.borrow().iter() {
               listener(&route);

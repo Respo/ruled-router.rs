@@ -577,7 +577,7 @@ impl App {
           console::log_1(&format!("当前URL路径: {pathname}").into());
 
           // 尝试解析当前URL
-          if let Ok(app_router) = AppRouter::parse(&pathname) {
+          if let Ok(app_router) = AppRouter::parse_route(&pathname) {
             if let Some(new_route) = app_router.sub_router {
               // 检查是否与内存状态不一致
               let current_state_route = app_state.borrow().get_route().clone();
